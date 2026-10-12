@@ -51,6 +51,8 @@ interface CampusMapProps {
   resolvingId: string | null;
   totalActiveWatts: number;
   activeGhostLeaksCount: number;
+  canResolveEnergy?: boolean;
+  canTriggerDemoLeak?: boolean;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -78,9 +80,10 @@ interface DetailPanelProps {
   onResolveLeak: (id: string) => void;
   resolvingId: string | null;
   resolvedId: string | null;
+  canResolveEnergy: boolean;
 }
 
-const DetailPanel: React.FC<DetailPanelProps> = ({ block, onClose, onResolveLeak, resolvingId, resolvedId }) => {
+const DetailPanel: React.FC<DetailPanelProps> = ({ block, onClose, onResolveLeak, resolvingId, resolvedId, canResolveEnergy }) => {
   const isResolving = resolvingId === block.id;
   const wasJustResolved = resolvedId === block.id;
   const diffWatts = block.activePowerWatts - block.baselineIdleWatts;
@@ -244,7 +247,7 @@ const DetailPanel: React.FC<DetailPanelProps> = ({ block, onClose, onResolveLeak
 
         {/* Action button at bottom */}
         <div className="mt-auto p-4 sm:p-5 border-t border-[#DCEBDD] bg-white">
-          {block.hasGhostLeak ? (
+          {block.hasGhostLeak && canResolveEnergy ? (
             <button
               onClick={() => onResolveLeak(block.id)}
               disabled={isResolving}
@@ -454,6 +457,8 @@ export const CampusMap: React.FC<CampusMapProps> = ({
   resolvingId,
   totalActiveWatts,
   activeGhostLeaksCount,
+  canResolveEnergy = true,
+  canTriggerDemoLeak = true,
 }) => {
   const [selectedBuilding, setSelectedBuilding] = useState<string>('ALL');
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
@@ -579,17 +584,19 @@ export const CampusMap: React.FC<CampusMapProps> = ({
           </div>
 
           {/* Demo control */}
-          <button
-            onClick={() => {
-              setResolvedId(null);
-              onTriggerDemoLeak('main-blk-fl2-r204');
-            }}
-            className="flex items-center justify-center gap-1.5 text-xs text-[#166534] font-semibold bg-white hover:bg-[#E8F5E9] border border-[#DCEBDD] hover:border-[#22C55E] px-3.5 py-2 min-h-[36px] rounded-xl transition-all shrink-0 w-full sm:w-auto cursor-pointer shadow-2xs"
-            title="Inject a simulated energy leak for demonstration"
-          >
-            <SlidersHorizontal className="w-3.5 h-3.5" />
-            Simulate Leak
-          </button>
+          {canTriggerDemoLeak && (
+            <button
+              onClick={() => {
+                setResolvedId(null);
+                onTriggerDemoLeak('main-blk-fl2-r204');
+              }}
+              className="flex items-center justify-center gap-1.5 text-xs text-[#166534] font-semibold bg-white hover:bg-[#E8F5E9] border border-[#DCEBDD] hover:border-[#22C55E] px-3.5 py-2 min-h-[36px] rounded-xl transition-all shrink-0 w-full sm:w-auto cursor-pointer shadow-2xs"
+              title="Inject a simulated energy leak for demonstration"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              Simulate Leak
+            </button>
+          )}
         </div>
 
         {/* Rows */}
@@ -662,6 +669,7 @@ export const CampusMap: React.FC<CampusMapProps> = ({
           onResolveLeak={handleResolveLeak}
           resolvingId={resolvingId}
           resolvedId={resolvedId}
+          canResolveEnergy={canResolveEnergy}
         />
       )}
     </div>

@@ -44,7 +44,12 @@ interface AuditHistoryItem {
   source: string;
 }
 
-export const PlateScanner: React.FC = () => {
+interface PlateScannerProps {
+  apiFetch?: typeof fetch;
+  lockedDepartment?: string;
+}
+
+export const PlateScanner: React.FC<PlateScannerProps> = ({ apiFetch = fetch, lockedDepartment }) => {
   const [selectedDept, setSelectedDept] = useState<string>('Central Hostel Dining Council');
   const [customServingWeight, setCustomServingWeight] = useState<string>('');
   
@@ -151,11 +156,11 @@ export const PlateScanner: React.FC = () => {
         mimeType: imageFile?.type || 'image/jpeg',
         originalServingWeightGrams: parsedWeight,
         mode: 'IMAGE',
-        department: selectedDept,
+        department: lockedDepartment || selectedDept,
         submissionId,
       };
 
-      const res = await fetch(API_ENDPOINTS.scanPlate, {
+      const res = await apiFetch(API_ENDPOINTS.scanPlate, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -396,8 +401,9 @@ export const PlateScanner: React.FC = () => {
               Submitting Department
             </label>
             <select
-              value={selectedDept}
+              value={lockedDepartment || selectedDept}
               onChange={(e) => setSelectedDept(e.target.value)}
+              disabled={Boolean(lockedDepartment)}
               className="w-full px-3 py-2 rounded-xl border border-[#DCEBDD] bg-white text-xs sm:text-sm text-[#1F2937] focus:outline-none focus:ring-2 focus:ring-[#22C55E] min-h-[42px]"
             >
               {DEPARTMENTS.map(d => (
@@ -407,7 +413,7 @@ export const PlateScanner: React.FC = () => {
               ))}
             </select>
             <p className="text-[11px] text-[#64748B] mt-1">
-              +5 Green Credits will be credited to this department upon successful audit.
+              +5 Green Credits will be credited using the authenticated account scope.
             </p>
           </div>
         </div>

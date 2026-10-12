@@ -8,13 +8,16 @@ try {
   console.log('>> Running Test Suite 1: Campus Energy Simulator');
   execSync('npx tsx src/simulator/energySimulator.test.ts', { stdio: 'inherit' });
 
-  console.log('\n>> Running Test Suite 2: Gemini Vision & Food Waste Audit');
+  console.log('\n>> Running Test Suite 2: Dev Account Seeds');
+  execSync('npx tsx src/services/devAccounts.test.ts', { stdio: 'inherit' });
+
+  console.log('\n>> Running Test Suite 3: Gemini Vision & Food Waste Audit');
   execSync('npx tsx src/services/geminiVision.test.ts', { stdio: 'inherit' });
 
-  console.log('\n>> Running Test Suite 3: /api/scan-plate API Integration');
+  console.log('\n>> Running Test Suite 4: /api/scan-plate API Integration');
   execSync('npx tsx src/services/apiIntegration.test.ts', { stdio: 'inherit' });
 
-  console.log('\n>> Running Test Suite 4: Smart Mess Forecast Engine');
+  console.log('\n>> Running Test Suite 5: Smart Mess Forecast Engine');
   execSync('npx tsx src/services/messForecastEngine.test.ts', { stdio: 'inherit' });
 
   console.log('\n====================================================');

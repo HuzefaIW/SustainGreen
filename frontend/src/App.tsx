@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { 
   Zap, Camera, Utensils, Trophy, AlertTriangle, 
-  Leaf, CheckCircle2, ArrowLeft, ChevronDown, LayoutGrid
+  Leaf, CheckCircle2, ArrowLeft, ChevronDown, LogOut
 } from 'lucide-react';
 import { CampusMap, CampusBlock } from './components/campus-map/CampusMap';
 import { PlateScanner } from './components/scanner/PlateScanner';
@@ -16,24 +16,38 @@ import {
   BotanicalBackground
 } from './components/common/BotanicalElements';
 import { API_ENDPOINTS } from './config/api';
+import { LoginPage } from './components/auth/LoginPage';
+import {
+  AuthSession,
+  can,
+  clearStoredSession,
+  createAuthorizedFetch,
+  getStoredSession,
+  logout,
+  restoreSession,
+} from './config/auth';
+
+type TabKey = 'MAP' | 'SCANNER' | 'MESS' | 'LEADERBOARD';
 
 // ─── Module Dropdown ──────────────────────────────────────────────────────────
 interface ModuleDropdownProps {
-  activeTab: 'MAP' | 'SCANNER' | 'MESS' | 'LEADERBOARD';
-  onChange: (tab: 'MAP' | 'SCANNER' | 'MESS' | 'LEADERBOARD') => void;
+  activeTab: TabKey;
+  onChange: (tab: TabKey) => void;
+  allowedTabs: TabKey[];
 }
 
-const MODULE_OPTIONS: { tab: 'MAP' | 'SCANNER' | 'MESS' | 'LEADERBOARD'; label: string; shortLabel: string; icon: React.ReactNode }[] = [
+const MODULE_OPTIONS: { tab: TabKey; label: string; shortLabel: string; icon: React.ReactNode }[] = [
   { tab: 'MAP',         label: 'Campus Energy',              shortLabel: 'Energy',      icon: <Zap      className="w-4 h-4" /> },
   { tab: 'SCANNER',     label: 'Food Waste Audit',           shortLabel: 'Food Audit',  icon: <Camera   className="w-4 h-4" /> },
   { tab: 'MESS',        label: 'Smart Mess Predictor',       shortLabel: 'Mess',        icon: <Utensils className="w-4 h-4" /> },
   { tab: 'LEADERBOARD', label: 'Green Cup & Activity Ledger',shortLabel: 'Green Cup',   icon: <Trophy   className="w-4 h-4" /> },
 ];
 
-const ModuleDropdown: React.FC<ModuleDropdownProps> = ({ activeTab, onChange }) => {
+const ModuleDropdown: React.FC<ModuleDropdownProps> = ({ activeTab, onChange, allowedTabs }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const active = MODULE_OPTIONS.find(m => m.tab === activeTab)!;
+  const options = MODULE_OPTIONS.filter(m => allowedTabs.includes(m.tab));
+  const active = options.find(m => m.tab === activeTab) || options[0] || MODULE_OPTIONS[0];
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -75,7 +89,7 @@ const ModuleDropdown: React.FC<ModuleDropdownProps> = ({ activeTab, onChange }) 
             <div className="px-3 py-1.5 text-[11px] font-semibold text-[#64748B] uppercase tracking-wider border-b border-[#DCEBDD] mb-1 sm:hidden">
               Switch Module
             </div>
-            {MODULE_OPTIONS.map(opt => (
+            {options.map(opt => (
               <button
                 key={opt.tab}
                 role="option"
@@ -104,17 +118,71 @@ const ModuleDropdown: React.FC<ModuleDropdownProps> = ({ activeTab, onChange }) 
 // ─── App ──────────────────────────────────────────────────────────────────────
 export function App() {
   const [currentView, setCurrentView] = useState<'LANDING' | 'SELECTION' | 'DASHBOARD'>('LANDING');
-  const [activeTab, setActiveTab] = useState<'MAP' | 'SCANNER' | 'MESS' | 'LEADERBOARD'>('MAP');
+  const [activeTab, setActiveTab] = useState<TabKey>('MAP');
+  const [session, setSession] = useState<AuthSession | null>(() => getStoredSession());
+  const [authChecked, setAuthChecked] = useState(false);
   const [blocks, setBlocks] = useState<CampusBlock[]>([]);
   const [history, setHistory] = useState<any[]>([]);
   const [totalActiveWatts, setTotalActiveWatts] = useState<number>(0);
   const [activeGhostLeaksCount, setActiveGhostLeaksCount] = useState<number>(0);
   const [resolvingId, setResolvingId] = useState<string | null>(null);
 
+  const account = session?.account || null;
+  const allowedTabs = useMemo<TabKey[]>(() => {
+    if (!account) return [];
+    const tabs: TabKey[] = [];
+    if (can(account, 'energy.read')) tabs.push('MAP');
+    if (can(account, 'food_audit.create') || can(account, 'food_audit.read')) tabs.push('SCANNER');
+    if (can(account, 'mess_forecast.create') || can(account, 'mess_forecast.read')) tabs.push('MESS');
+    if (can(account, 'leaderboard.read') || can(account, 'activity.read')) tabs.push('LEADERBOARD');
+    return tabs.length > 0 ? tabs : ['LEADERBOARD'];
+  }, [account]);
+
+  const handleUnauthorized = useCallback(() => {
+    clearStoredSession();
+    setSession(null);
+    setCurrentView('LANDING');
+    setActiveTab('MAP');
+  }, []);
+
+  const apiFetch = useMemo(() => createAuthorizedFetch(session, handleUnauthorized), [session, handleUnauthorized]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const stored = getStoredSession();
+    if (!stored) {
+      setAuthChecked(true);
+      return;
+    }
+    restoreSession(stored)
+      .then((restored) => {
+        if (!cancelled) setSession(restored);
+      })
+      .catch(() => {
+        if (!cancelled) setSession(null);
+      })
+      .finally(() => {
+        if (!cancelled) setAuthChecked(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (account && !allowedTabs.includes(activeTab)) {
+      setActiveTab(allowedTabs[0]);
+      if (currentView === 'DASHBOARD') {
+        window.location.hash = `#${allowedTabs[0].toLowerCase()}`;
+      }
+    }
+  }, [account, allowedTabs, activeTab, currentView]);
+
   // Poll Campus Telemetry
   const fetchCampusStatus = async () => {
+    if (!session || !can(account, 'campus.read')) return;
     try {
-      const res = await fetch(API_ENDPOINTS.campusStatus);
+      const res = await apiFetch(API_ENDPOINTS.campusStatus);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setBlocks(data.blocks || []);
@@ -126,8 +194,9 @@ export function App() {
   };
 
   const fetchCampusHistory = async () => {
+    if (!session || !can(account, 'energy.read')) return;
     try {
-      const res = await fetch(API_ENDPOINTS.campusHistory);
+      const res = await apiFetch(API_ENDPOINTS.campusHistory);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setHistory(data.history || []);
@@ -160,16 +229,17 @@ export function App() {
   }, []);
 
   useEffect(() => {
+    if (!session) return;
     fetchCampusStatus();
     fetchCampusHistory();
     const interval = setInterval(fetchCampusStatus, 3000);
     return () => clearInterval(interval);
-  }, []);
+  }, [session, apiFetch, account]);
 
   const handleResolveLeak = async (blockId: string) => {
     setResolvingId(blockId);
     try {
-      const res = await fetch(API_ENDPOINTS.resolveLeak, {
+      const res = await apiFetch(API_ENDPOINTS.resolveLeak, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ blockId }),
@@ -189,7 +259,7 @@ export function App() {
 
   const handleTriggerDemoLeak = async (blockId: string) => {
     try {
-      await fetch(API_ENDPOINTS.triggerDemoLeak, {
+      await apiFetch(API_ENDPOINTS.triggerDemoLeak, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ blockId }),
@@ -201,10 +271,11 @@ export function App() {
     }
   };
 
-  const handleOpenDashboard = (tab?: 'MAP' | 'SCANNER' | 'MESS' | 'LEADERBOARD') => {
-    if (tab) {
-      setActiveTab(tab);
-      window.location.hash = `#${tab.toLowerCase()}`;
+  const handleOpenDashboard = (tab?: TabKey) => {
+    const targetTab = tab && allowedTabs.includes(tab) ? tab : allowedTabs[0];
+    if (targetTab) {
+      setActiveTab(targetTab);
+      window.location.hash = `#${targetTab.toLowerCase()}`;
       setCurrentView('DASHBOARD');
     } else {
       window.location.hash = '#selection';
@@ -213,9 +284,10 @@ export function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleSelectFromSelection = (tab: 'MAP' | 'SCANNER' | 'MESS' | 'LEADERBOARD') => {
-    setActiveTab(tab);
-    window.location.hash = `#${tab.toLowerCase()}`;
+  const handleSelectFromSelection = (tab: TabKey) => {
+    const targetTab = allowedTabs.includes(tab) ? tab : allowedTabs[0];
+    setActiveTab(targetTab);
+    window.location.hash = `#${targetTab.toLowerCase()}`;
     setCurrentView('DASHBOARD');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -226,10 +298,34 @@ export function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleTabChange = (tab: 'MAP' | 'SCANNER' | 'MESS' | 'LEADERBOARD') => {
+  const handleTabChange = (tab: TabKey) => {
+    if (!allowedTabs.includes(tab)) return;
     setActiveTab(tab);
     window.location.hash = `#${tab.toLowerCase()}`;
   };
+
+  const handleLogout = async () => {
+    await logout(session);
+    setSession(null);
+    setBlocks([]);
+    setHistory([]);
+    setTotalActiveWatts(0);
+    setActiveGhostLeaksCount(0);
+    window.location.hash = '';
+    setCurrentView('LANDING');
+  };
+
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen bg-[#F5FBF5] flex items-center justify-center text-sm text-[#166534] font-semibold">
+        Restoring EcoPulse session...
+      </div>
+    );
+  }
+
+  if (!session || !account) {
+    return <LoginPage onAuthenticated={setSession} />;
+  }
 
   // ── Landing & Selection views ──────────────────────────────────────────────
   if (currentView === 'LANDING') {
@@ -294,7 +390,7 @@ export function App() {
             <span className="text-[#DCEBDD] text-sm hidden sm:block font-bold">/</span>
 
             {/* Module Dropdown */}
-            <ModuleDropdown activeTab={activeTab} onChange={handleTabChange} />
+            <ModuleDropdown activeTab={activeTab} onChange={handleTabChange} allowedTabs={allowedTabs} />
           </div>
 
           {/* Right: Status + Simulated badge */}
@@ -321,8 +417,17 @@ export function App() {
             {/* Simulated badge */}
             <span className="hidden lg:inline-flex items-center gap-1 text-[11px] text-[#64748B] bg-[#E8F5E9]/50 border border-[#DCEBDD] px-2.5 py-1 rounded-lg">
               <SproutingSeedling className="w-3 h-3 text-[#22C55E]" opacity={0.8} />
-              Simulated
+              {account.role.replace(/_/g, ' ')}
             </span>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 min-h-[38px] rounded-xl border border-[#DCEBDD] bg-white text-xs font-semibold text-[#166534] hover:bg-[#E8F5E9]"
+              title={`Sign out ${account.email}`}
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              Logout
+            </button>
           </div>
         </div>
       </header>
@@ -338,11 +443,13 @@ export function App() {
             resolvingId={resolvingId}
             totalActiveWatts={totalActiveWatts}
             activeGhostLeaksCount={activeGhostLeaksCount}
+            canResolveEnergy={can(account, 'energy.resolve_leak')}
+            canTriggerDemoLeak={can(account, 'energy.demo_trigger')}
           />
         )}
-        {activeTab === 'SCANNER'     && <PlateScanner />}
-        {activeTab === 'MESS'        && <MessPredictor />}
-        {activeTab === 'LEADERBOARD' && <Leaderboard />}
+        {activeTab === 'SCANNER'     && <PlateScanner apiFetch={apiFetch} lockedDepartment={account.role === 'SUPER_ADMIN' ? undefined : account.department} />}
+        {activeTab === 'MESS'        && <MessPredictor apiFetch={apiFetch} canRecordActuals={can(account, 'mess_actuals.record')} />}
+        {activeTab === 'LEADERBOARD' && <Leaderboard apiFetch={apiFetch} />}
       </main>
 
       {/* ── Minimal Footer ───────────────────────────────────────────────── */}

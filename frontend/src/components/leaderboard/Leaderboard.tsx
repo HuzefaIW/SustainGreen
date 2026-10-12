@@ -28,10 +28,14 @@ interface AuditLog {
   costSavedInr: number;
   creditsAwarded: number;
   isSeeded?: boolean;
-  type?: 'ENERGY' | 'FOOD_AUDIT';
+  type?: 'ENERGY' | 'FOOD_AUDIT' | 'AUTH' | 'MESS_FORECAST' | 'MESS_ACTUAL' | 'ADMIN';
 }
 
-export const Leaderboard: React.FC = () => {
+interface LeaderboardProps {
+  apiFetch?: typeof fetch;
+}
+
+export const Leaderboard: React.FC<LeaderboardProps> = ({ apiFetch = fetch }) => {
   const [standings, setStandings] = useState<DepartmentStanding[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -40,8 +44,8 @@ export const Leaderboard: React.FC = () => {
   const fetchData = async () => {
     try {
       const [resStandings, resLogs] = await Promise.all([
-        fetch(API_ENDPOINTS.leaderboard),
-        fetch(API_ENDPOINTS.auditLogs),
+        apiFetch(API_ENDPOINTS.leaderboard),
+        apiFetch(API_ENDPOINTS.auditLogs),
       ]);
       if (!resStandings.ok || !resLogs.ok) throw new Error('API request failed');
       const dataStandings = await resStandings.json();

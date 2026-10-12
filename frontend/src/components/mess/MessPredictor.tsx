@@ -55,7 +55,12 @@ interface ForecastHistoryItem {
   auditInformed: boolean;
 }
 
-export const MessPredictor: React.FC = () => {
+interface MessPredictorProps {
+  apiFetch?: typeof fetch;
+  canRecordActuals?: boolean;
+}
+
+export const MessPredictor: React.FC<MessPredictorProps> = ({ apiFetch = fetch, canRecordActuals = true }) => {
   const [day, setDay] = useState<string>('Friday');
   const [weather, setWeather] = useState<string>('Sunny');
   const [isExam, setIsExam] = useState<boolean>(false);
@@ -78,7 +83,7 @@ export const MessPredictor: React.FC = () => {
       const query = `?day=${encodeURIComponent(day)}&weather=${encodeURIComponent(weather)}&isExam=${isExam}&eligiblePopulation=${studentCapacity}&totalStudents=${studentCapacity}`;
       const url = API_ENDPOINTS.messForecast(query);
 
-      const res = await fetch(url);
+      const res = await apiFetch(url);
 
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
       const data = await res.json();
@@ -158,7 +163,7 @@ export const MessPredictor: React.FC = () => {
 
   const fetchHistory = async () => {
     try {
-      const res = await fetch(API_ENDPOINTS.messForecastHistory);
+      const res = await apiFetch(API_ENDPOINTS.messForecastHistory);
       if (!res.ok) return;
       const data = await res.json();
       setHistoryItems(data.history || []);
@@ -178,7 +183,7 @@ export const MessPredictor: React.FC = () => {
 
     setLoggingId(forecastId);
     try {
-      const res = await fetch(API_ENDPOINTS.messForecastActual, {
+      const res = await apiFetch(API_ENDPOINTS.messForecastActual, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -689,7 +694,7 @@ export const MessPredictor: React.FC = () => {
                         </div>
 
                         {/* Log Actual Turnout form */}
-                        {!hasActual && (
+                        {!hasActual && canRecordActuals && (
                           <div className="flex items-center gap-2 self-start md:self-auto">
                             <input
                               type="number"

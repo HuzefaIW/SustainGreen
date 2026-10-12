@@ -43,7 +43,35 @@ npm run dev
 
 Visit **http://localhost:5173** to view the live dashboard.
 
-### 3. Optional: Run the Python AI / Analytics Engine
+### 3. Seeded SVVV Dev Accounts
+For fast development/demo auth, the backend exposes seeded `@svvv.in` accounts:
+
+| Role | Email | Password | Scope |
+|---|---|---|---|
+| Super Admin | `super.admin@svvv.in` | `Super@123` | Full campus, blocks, mess, leaderboard, accounts |
+| Block Admin | `main.block.admin@svvv.in` | `MainBlock@123` | Main Block rooms/labs |
+| Block Admin | `mech.block.admin@svvv.in` | `MechBlock@123` | Mechanical Engineering Block |
+| Block Admin | `mba.block.admin@svvv.in` | `MbaBlock@123` | MBA Block |
+| Canteen Admin | `canteen.admin@svvv.in` | `Canteen@123` | Central Hostel Mess |
+
+Login returns a signed bearer token, and protected endpoints require `Authorization: Bearer <token>`.
+```bash
+curl -X POST http://localhost:5000/api/auth/dev-login \
+  -H "Content-Type: application/json" \
+  -d "{\"email\":\"super.admin@svvv.in\",\"password\":\"Super@123\"}"
+
+curl http://localhost:5000/api/auth/me \
+  -H "Authorization: Bearer <token>"
+
+curl http://localhost:5000/api/dev-accounts \
+  -H "Authorization: Bearer <super-admin-token>"
+```
+
+The known credentials are local-development seeds only. They are hashed in code, sanitized from API responses, and disabled when `NODE_ENV=production` or `DISABLE_DEV_AUTH=true`.
+
+urBackend MCP/docs note: the public docs describe `x-api-key` auth, publishable/secret keys, built-in auth/JWT, and REST CRUD. These local seeds keep hackathon development moving; swap the backing store to urBackend once the project keys and final auth API paths are available.
+
+### 4. Optional: Run the Python AI / Analytics Engine
 ```bash
 # Python Mess Simulation
 python analytics-engine/simulation.py

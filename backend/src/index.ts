@@ -3,7 +3,7 @@ dotenv.config();
 
 import express from 'express';
 import cors from 'cors';
-import { CampusEnergySimulator } from './simulator/energySimulator.js';
+import { AuditLogEntry, CampusEnergySimulator } from './simulator/energySimulator.js';
 import {
   analyzeFoodPlateImage,
   getCalibratedPresetAudit,
@@ -13,6 +13,28 @@ import {
   getForecastHistory,
   recordActualDiners,
 } from './services/messForecastEngine.js';
+import {
+  authenticateDevAccount,
+  canAccessBlock,
+  findDevAccountByEmail,
+  getDevAccounts,
+  hasPermission,
+  isDevelopmentAuthEnabled,
+  SafeAccount,
+  sanitizeAccount,
+  validateSvvvEmail,
+} from './services/devAccounts.js';
+import {
+  authenticate,
+  AuthenticatedRequest,
+  createSessionToken,
+  enforceLoginRateLimit,
+  getBearerToken,
+  requireBlockAccess,
+  requirePermission,
+  resetLoginRateLimit,
+  revokeToken,
+} from './services/auth.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -21,6 +43,183 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
 const simulator = new CampusEnergySimulator();
+
+function writeActivity(entry: Omit<AuditLogEntry, 'id' | 'timestamp' | 'costSavedInr' | 'creditsAwarded'> & Partial<Pick<AuditLogEntry, 'costSavedInr' | 'creditsAwarded'>>): AuditLogEntry {
+  const log: AuditLogEntry = {
+    id: `activity-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    timestamp: new Date().toISOString(),
+    costSavedInr: 0,
+    creditsAwarded: 0,
+    ...entry,
+  };
+  simulator.addAuditLog(log);
+  return log;
+}
+
+function filterSnapshotForUser(user: SafeAccount) {
+  const snapshot = simulator.getSnapshot();
+  const blocks = hasPermission(user, 'blocks.read_all')
+    ? snapshot.blocks
+    : snapshot.blocks.filter((block) => canAccessBlock(user, block.id));
+  const totalActiveWatts = blocks.reduce((sum, block) => sum + block.activePowerWatts, 0);
+  const totalBaselineWatts = blocks.reduce((sum, block) => sum + block.baselineIdleWatts, 0);
+  const activeGhostLeaksCount = blocks.filter((block) => block.hasGhostLeak).length;
+
+  return {
+    ...snapshot,
+    blocks,
+    totalActiveWatts,
+    totalActivePowerKW: Number((totalActiveWatts / 1000).toFixed(2)),
+    totalBaselinePowerKW: Number((totalBaselineWatts / 1000).toFixed(2)),
+    totalExcessPowerKW: Number((Math.max(0, totalActiveWatts - totalBaselineWatts) / 1000).toFixed(2)),
+    activeGhostLeaksCount,
+    systemStatus: activeGhostLeaksCount === 0 ? 'NORMAL' : 'ATTENTION_REQUIRED',
+    scope: hasPermission(user, 'blocks.read_all') ? 'campus' : 'assigned_blocks',
+  };
+}
+
+function filterActivityForUser(user: SafeAccount, logs: AuditLogEntry[]): AuditLogEntry[] {
+  if (hasPermission(user, 'activity.read_all')) {
+    return logs;
+  }
+  return logs.filter((log) => {
+    if (log.type === 'FOOD_AUDIT' || log.type === 'MESS_FORECAST' || log.type === 'MESS_ACTUAL') {
+      return user.role === 'CANTEEN_ADMIN' || log.department === user.department;
+    }
+    if (log.type === 'AUTH') {
+      return log.resolvedBy === user.email;
+    }
+    return canAccessBlock(user, log.blockId);
+  });
+}
+
+// Development account metadata is protected and disabled in production.
+app.get('/api/dev-accounts', authenticate, requirePermission('users.read'), (_req, res) => {
+  if (!isDevelopmentAuthEnabled()) {
+    res.status(404).json({ success: false, error: 'Development accounts are disabled.' });
+    return;
+  }
+  res.json({
+    source: 'local-dev-seed',
+    domain: 'svvv.in',
+    accounts: getDevAccounts(),
+  });
+});
+
+app.get('/api/dev-accounts/:email', authenticate, requirePermission('users.read'), (req, res) => {
+  if (!isDevelopmentAuthEnabled()) {
+    res.status(404).json({ success: false, error: 'Development accounts are disabled.' });
+    return;
+  }
+  const email = String(req.params.email || '');
+  if (!validateSvvvEmail(email)) {
+    res.status(400).json({
+      success: false,
+      error: 'Only @svvv.in dev accounts are allowed.',
+    });
+    return;
+  }
+
+  const account = findDevAccountByEmail(email);
+  if (!account) {
+    res.status(404).json({
+      success: false,
+      error: `No seeded dev account found for "${email}".`,
+    });
+    return;
+  }
+
+  res.json({
+    success: true,
+    account: sanitizeAccount(account),
+  });
+});
+
+app.post('/api/auth/dev-login', (req, res) => {
+  if (!isDevelopmentAuthEnabled()) {
+    res.status(404).json({ success: false, error: 'Development login is disabled.' });
+    return;
+  }
+
+  const { email, password } = req.body;
+  if (typeof email !== 'string' || typeof password !== 'string') {
+    res.status(400).json({
+      success: false,
+      error: 'email and password are required.',
+    });
+    return;
+  }
+
+  if (!enforceLoginRateLimit(email)) {
+    res.status(429).json({
+      success: false,
+      error: 'Too many login attempts. Please retry shortly.',
+    });
+    return;
+  }
+
+  if (!validateSvvvEmail(email)) {
+    res.status(400).json({
+      success: false,
+      error: 'Only @svvv.in dev accounts are allowed.',
+    });
+    return;
+  }
+
+  const account = authenticateDevAccount(email, password);
+  if (!account) {
+    res.status(401).json({
+      success: false,
+      error: 'Invalid email or password.',
+    });
+    return;
+  }
+
+  resetLoginRateLimit(email);
+  const safeAccount = sanitizeAccount(account);
+  const session = createSessionToken(safeAccount);
+  writeActivity({
+    blockId: 'auth-session',
+    blockName: 'Authentication',
+    action: 'Development account login succeeded.',
+    resolvedBy: safeAccount.email,
+    department: safeAccount.department,
+    type: 'AUTH',
+  });
+
+  res.json({
+    success: true,
+    tokenType: 'Bearer',
+    token: session.token,
+    expiresAt: session.expiresAt,
+    expiresInSeconds: session.expiresInSeconds,
+    account: safeAccount,
+  });
+});
+
+app.get('/api/auth/me', authenticate, (req: AuthenticatedRequest, res) => {
+  res.json({
+    success: true,
+    account: req.user,
+    permissions: req.user?.permissions || [],
+  });
+});
+
+app.post('/api/auth/logout', authenticate, (req: AuthenticatedRequest, res) => {
+  const token = getBearerToken(req);
+  if (token) revokeToken(token);
+  if (req.user) {
+    writeActivity({
+      blockId: 'auth-session',
+      blockName: 'Authentication',
+      action: 'Development account logout succeeded.',
+      resolvedBy: req.user.email,
+      department: req.user.department,
+      type: 'AUTH',
+    });
+  }
+  res.json({ success: true });
+});
 
 // Department Green Credits State
 interface DepartmentScore {
@@ -70,14 +269,14 @@ export function findLeaderboardDepartment(deptName: string, leaderboard: Departm
 
 // 1. Campus Status & NILM Telemetry
 // Single snapshot per request derived in a single pass from the simulator source of truth.
-app.get('/api/campus-status', (_req, res) => {
-  const snapshot = simulator.getSnapshot();
-  res.json(snapshot);
+app.get('/api/campus-status', authenticate, requirePermission('campus.read'), (req: AuthenticatedRequest, res) => {
+  res.json(filterSnapshotForUser(req.user!));
 });
 
 // 2. Resolve Leak Endpoint (Remote load cut-off simulation)
-app.post('/api/resolve-leak', (req, res) => {
-  const { blockId, resolvedBy = 'Campus EcoPulse User' } = req.body;
+app.post('/api/resolve-leak', authenticate, requirePermission('energy.resolve_leak'), requireBlockAccess((req) => req.body.blockId), (req: AuthenticatedRequest, res) => {
+  const { blockId } = req.body;
+  const resolvedBy = req.user!.email;
   if (!blockId || typeof blockId !== 'string') {
     res.status(400).json({ 
       success: false, 
@@ -119,11 +318,12 @@ app.post('/api/resolve-leak', (req, res) => {
     message: 'Simulated leak resolved & load returned to baseline.',
     resolution: result.resolution,
     log: result.log,
+      source: 'SIMULATED_ENERGY_ACTION',
   });
 });
 
 // 3. Trigger Demo Leak (For Live Hackathon Demos)
-app.post('/api/trigger-demo-leak', (req, res) => {
+app.post('/api/trigger-demo-leak', authenticate, requirePermission('energy.demo_trigger'), requireBlockAccess((req) => req.body.blockId || 'main-blk-fl2-r204'), (req: AuthenticatedRequest, res) => {
   const { blockId = 'main-blk-fl2-r204' } = req.body;
   const result = simulator.triggerDemoLeak(blockId);
   if (!result.success) {
@@ -136,33 +336,36 @@ app.post('/api/trigger-demo-leak', (req, res) => {
   res.status(200).json({ 
     success: true, 
     message: `Simulated Ghost Leak triggered in ${result.block?.name || blockId} for demonstration.`,
-    block: result.block 
+    block: result.block,
+    source: 'SIMULATED_DEMO_EVENT',
   });
 });
 
 // 4. 24-Hour Telemetry History
-app.get('/api/campus-history', (_req, res) => {
+app.get('/api/campus-history', authenticate, requirePermission('energy.read'), (_req, res) => {
   res.json({
     history: simulator.get24HourTelemetry(),
+    source: 'SIMULATED_TELEMETRY_HISTORY',
   });
 });
 
 // 5. Verifiable Audit Trail
-app.get('/api/audit-logs', (_req, res) => {
+app.get('/api/audit-logs', authenticate, requirePermission('activity.read'), (req: AuthenticatedRequest, res) => {
   res.json({
-    logs: simulator.getAuditLogs(),
+    logs: filterActivityForUser(req.user!, simulator.getAuditLogs()),
   });
 });
 
 // 6. Department Leaderboard
-app.get('/api/leaderboard', (_req, res) => {
+app.get('/api/leaderboard', authenticate, requirePermission('leaderboard.read'), (_req, res) => {
   res.json({
     standings: departmentLeaderboard,
+    source: 'SESSION_GREEN_CUP_TOTALS',
   });
 });
 
 // 7. Predictive Mess Kitchen Engine
-app.get('/api/mess-forecast', (req, res) => {
+app.get('/api/mess-forecast', authenticate, requirePermission('mess_forecast.create'), (req: AuthenticatedRequest, res) => {
   try {
     const day = req.query.day as string | undefined;
     const weather = req.query.weather as string | undefined;
@@ -183,6 +386,15 @@ app.get('/api/mess-forecast', (req, res) => {
       safetyBufferPercent,
       mealPeriod,
     }, auditLogs);
+
+    writeActivity({
+      blockId: 'central-hostel-mess',
+      blockName: 'Central Hostel Mess & Food Preparation Hall',
+      action: `Mess forecast generated for ${forecast.parameters.mealPeriod} (${forecast.parameters.day}, ${forecast.parameters.weather}).`,
+      resolvedBy: req.user!.email,
+      department: req.user!.department,
+      type: 'MESS_FORECAST',
+    });
 
     const safetyBufferKg = Number((forecast.expectedDiners * 0.36 * (forecast.parameters.safetyBufferPercent / 100)).toFixed(1));
 
@@ -215,7 +427,7 @@ app.get('/api/mess-forecast', (req, res) => {
           hasIntegratedAuditData: forecast.auditData.isIntegrated,
           averagePlateLeftoverPercent: forecast.auditData.averageLeftoverPercent,
           auditsInformingCount: forecast.auditData.auditCount,
-          timeframe: forecast.auditData.timeframe,
+          timeframe: forecast.auditData.periodCovered,
           notes: forecast.auditData.note,
         },
         forecastId: forecast.id,
@@ -237,14 +449,14 @@ app.get('/api/mess-forecast', (req, res) => {
 });
 
 // 7b. Mess Forecast History Log
-app.get('/api/mess-forecast/history', (_req, res) => {
+app.get('/api/mess-forecast/history', authenticate, requirePermission('mess_forecast.read'), (_req, res) => {
   res.json({
     history: getForecastHistory(),
   });
 });
 
 // 7c. Record Actual Diner Attendance (Optional comparison)
-app.post('/api/mess-forecast/actual', (req, res) => {
+app.post('/api/mess-forecast/actual', authenticate, requirePermission('mess_actuals.record'), (req: AuthenticatedRequest, res) => {
   const { forecastId, actualDiners, actualCookedKg } = req.body;
   if (!forecastId || typeof actualDiners !== 'number') {
     res.status(400).json({ error: 'forecastId and actualDiners (number) are required' });
@@ -255,20 +467,30 @@ app.post('/api/mess-forecast/actual', (req, res) => {
     res.status(404).json({ error: `Forecast "${forecastId}" not found in session history.` });
     return;
   }
+  writeActivity({
+    blockId: 'central-hostel-mess',
+    blockName: 'Central Hostel Mess & Food Preparation Hall',
+    action: `Actual diner count recorded for forecast ${forecastId}: ${actualDiners} diners.`,
+    resolvedBy: req.user!.email,
+    department: req.user!.department,
+    type: 'MESS_ACTUAL',
+  });
   res.json({ success: true, message: 'Actual diner count recorded against forecast.' });
 });
 
 // 8. Food Waste Audit (Real Gemini Vision Image Analysis & Calibrated Simulation)
-app.post('/api/scan-plate', async (req, res) => {
+app.post('/api/scan-plate', authenticate, requirePermission('food_audit.create'), async (req: AuthenticatedRequest, res) => {
   const {
     imageBase64,
     mimeType = 'image/jpeg',
     originalServingWeightGrams,
     simulatedPlateType = 'NORMAL_TRAY',
     mode,
-    department = 'Central Hostel Dining Council',
     submissionId,
   } = req.body;
+  const department = req.user!.role === 'SUPER_ADMIN' && typeof req.body.department === 'string'
+    ? req.body.department
+    : req.user!.department;
 
   // Department resolution
   const targetDept = findLeaderboardDepartment(department, departmentLeaderboard)
@@ -317,7 +539,7 @@ app.post('/api/scan-plate', async (req, res) => {
           blockId: 'central-hostel-mess',
           blockName: 'Central Hostel Dining Hall',
           action: `AI Photo Audit: ${analysis.visibleFoodItems.slice(0, 3).join(', ') || 'Leftover remnants'} (~${analysis.remainingPortionPercent}% remaining portion estimate).`,
-          resolvedBy: 'Food Waste Audit User',
+          resolvedBy: req.user!.email,
           department: targetDept.department.split(' (')[0],
           costSavedInr: 0,
           creditsAwarded: analysis.greenCreditsEarned,
@@ -383,7 +605,7 @@ app.post('/api/scan-plate', async (req, res) => {
       blockId: 'central-hostel-mess',
       blockName: 'Central Hostel Dining Hall',
       action: `Preset Audit Simulation: ${simulatedPlateType} (~${presetAudit.remainingPortionPercent}% leftover benchmark).`,
-      resolvedBy: 'Plate Waste Audit User',
+      resolvedBy: req.user!.email,
       department: targetDept.department.split(' (')[0],
       costSavedInr: 0,
       creditsAwarded: presetAudit.greenCreditsEarned,

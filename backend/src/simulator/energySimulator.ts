@@ -71,7 +71,7 @@ export interface AuditLogEntry {
   costSavedInr: number;
   creditsAwarded: number;
   isSeeded?: boolean;
-  type?: 'ENERGY' | 'FOOD_AUDIT';
+  type?: 'ENERGY' | 'FOOD_AUDIT' | 'AUTH' | 'MESS_FORECAST' | 'MESS_ACTUAL' | 'ADMIN';
 }
 
 export interface HourlyEnergyPoint {
