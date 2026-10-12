@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Zap, Camera, Utensils, Trophy, AlertTriangle, 
-  ShieldCheck, Leaf, Building2, CheckCircle2,
-  ArrowLeft, Grid, SlidersHorizontal
+  Leaf, CheckCircle2, ArrowLeft, ChevronDown, LayoutGrid
 } from 'lucide-react';
 import { CampusMap, CampusBlock } from './components/campus-map/CampusMap';
 import { PlateScanner } from './components/scanner/PlateScanner';
@@ -17,6 +16,75 @@ import {
 } from './components/common/BotanicalElements';
 import { API_ENDPOINTS } from './config/api';
 
+// ─── Module Dropdown ──────────────────────────────────────────────────────────
+interface ModuleDropdownProps {
+  activeTab: 'MAP' | 'SCANNER' | 'MESS' | 'LEADERBOARD';
+  onChange: (tab: 'MAP' | 'SCANNER' | 'MESS' | 'LEADERBOARD') => void;
+}
+
+const MODULE_OPTIONS: { tab: 'MAP' | 'SCANNER' | 'MESS' | 'LEADERBOARD'; label: string; icon: React.ReactNode }[] = [
+  { tab: 'MAP',         label: 'Campus Energy',              icon: <Zap      className="w-3.5 h-3.5" /> },
+  { tab: 'SCANNER',     label: 'Food Waste Audit',           icon: <Camera   className="w-3.5 h-3.5" /> },
+  { tab: 'MESS',        label: 'Smart Mess Predictor',       icon: <Utensils className="w-3.5 h-3.5" /> },
+  { tab: 'LEADERBOARD', label: 'Green Cup & Activity Ledger',icon: <Trophy   className="w-3.5 h-3.5" /> },
+];
+
+const ModuleDropdown: React.FC<ModuleDropdownProps> = ({ activeTab, onChange }) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const active = MODULE_OPTIONS.find(m => m.tab === activeTab)!;
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        id="module-dropdown-btn"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen(v => !v)}
+        className="flex items-center space-x-2 px-3 py-2 rounded-xl bg-white border border-[#CADBC4] text-[#1B3826] text-sm font-semibold hover:bg-[#F0EBE0] transition-colors shadow-2xs"
+      >
+        <LayoutGrid className="w-4 h-4 text-[#486340]" />
+        <span className="hidden sm:inline">{active.label}</span>
+        <ChevronDown className={`w-3.5 h-3.5 text-[#486340] transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div
+          role="listbox"
+          aria-label="Module selection"
+          className="absolute left-0 top-full mt-1.5 w-56 bg-white border border-[#D8E4D2] rounded-xl shadow-elevated z-50 py-1 overflow-hidden"
+        >
+          {MODULE_OPTIONS.map(opt => (
+            <button
+              key={opt.tab}
+              role="option"
+              aria-selected={opt.tab === activeTab}
+              onClick={() => { onChange(opt.tab); setOpen(false); }}
+              className={`w-full text-left flex items-center space-x-2.5 px-3.5 py-2.5 text-sm transition-colors ${
+                opt.tab === activeTab
+                  ? 'bg-[#EAF2E7] text-[#1B3826] font-semibold'
+                  : 'text-[#374939] hover:bg-[#F5F7F2]'
+              }`}
+            >
+              <span className={opt.tab === activeTab ? 'text-[#1B3826]' : 'text-[#6B8F63]'}>{opt.icon}</span>
+              <span>{opt.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ─── App ──────────────────────────────────────────────────────────────────────
 export function App() {
   const [currentView, setCurrentView] = useState<'LANDING' | 'SELECTION' | 'DASHBOARD'>('LANDING');
   const [activeTab, setActiveTab] = useState<'MAP' | 'SCANNER' | 'MESS' | 'LEADERBOARD'>('MAP');
@@ -30,6 +98,7 @@ export function App() {
   const fetchCampusStatus = async () => {
     try {
       const res = await fetch(API_ENDPOINTS.campusStatus);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setBlocks(data.blocks || []);
       setTotalActiveWatts(data.totalActiveWatts || 0);
@@ -42,6 +111,7 @@ export function App() {
   const fetchCampusHistory = async () => {
     try {
       const res = await fetch(API_ENDPOINTS.campusHistory);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setHistory(data.history || []);
     } catch (err) {
@@ -49,29 +119,24 @@ export function App() {
     }
   };
 
-  // Sync with initial URL hash
+  // Sync with URL hash
   useEffect(() => {
     const handleHash = () => {
       const hash = window.location.hash.toLowerCase();
       if (hash.includes('selection')) {
         setCurrentView('SELECTION');
       } else if (hash.includes('scanner')) {
-        setCurrentView('DASHBOARD');
-        setActiveTab('SCANNER');
+        setCurrentView('DASHBOARD'); setActiveTab('SCANNER');
       } else if (hash.includes('mess')) {
-        setCurrentView('DASHBOARD');
-        setActiveTab('MESS');
+        setCurrentView('DASHBOARD'); setActiveTab('MESS');
       } else if (hash.includes('leaderboard')) {
-        setCurrentView('DASHBOARD');
-        setActiveTab('LEADERBOARD');
+        setCurrentView('DASHBOARD'); setActiveTab('LEADERBOARD');
       } else if (hash.includes('dashboard') || hash.includes('map')) {
-        setCurrentView('DASHBOARD');
-        setActiveTab('MAP');
+        setCurrentView('DASHBOARD'); setActiveTab('MAP');
       } else {
         setCurrentView('LANDING');
       }
     };
-
     handleHash();
     window.addEventListener('hashchange', handleHash);
     return () => window.removeEventListener('hashchange', handleHash);
@@ -92,8 +157,9 @@ export function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ blockId }),
       });
-      await res.json();
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       await fetchCampusStatus();
+      await fetchCampusHistory();
     } catch (err) {
       console.error('Failed to resolve leak:', err);
     } finally {
@@ -139,12 +205,12 @@ export function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleBackToSelection = () => {
-    window.location.hash = '#selection';
-    setCurrentView('SELECTION');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  const handleTabChange = (tab: 'MAP' | 'SCANNER' | 'MESS' | 'LEADERBOARD') => {
+    setActiveTab(tab);
+    window.location.hash = `#${tab.toLowerCase()}`;
   };
 
+  // ── Landing & Selection views ──────────────────────────────────────────────
   if (currentView === 'LANDING') {
     return (
       <LandingPage
@@ -167,197 +233,78 @@ export function App() {
     );
   }
 
+  // ── Dashboard view ────────────────────────────────────────────────────────
+  const systemNormal = activeGhostLeaksCount === 0;
+
   return (
     <div className="min-h-screen bg-[#FAF6EE] text-[#191C1A] flex flex-col font-sans selection:bg-[#284635] selection:text-white relative overflow-x-hidden">
-      {/* Subtle Botanical Journal Texture */}
       <BotanicalJournalTexture />
 
-      {/* Top Campus Operations Dashboard Header */}
-      <header className="sticky top-0 z-50 bg-[#FAF6EE]/96 backdrop-blur-md border-b border-[#D8E4D2] shadow-xs relative">
-        {/* Subtle decorative branch in outer margin */}
-        <HeroBotanicalFramingRight 
-          className="absolute -top-6 -right-6 w-60 sm:w-72 h-auto pointer-events-none z-0" 
-          opacity={0.32} 
+      {/* ── Slim Dashboard Header ──────────────────────────────────────────── */}
+      <header className="sticky top-0 z-50 bg-[#FAF6EE]/96 backdrop-blur-md border-b border-[#D8E4D2] relative">
+        <HeroBotanicalFramingRight
+          className="absolute -top-4 -right-4 w-48 sm:w-60 h-auto pointer-events-none z-0"
+          opacity={0.28}
         />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between gap-3 relative z-10">
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 relative z-10">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            
-            {/* Branding & Back Links */}
-            <div className="flex items-center space-x-2.5 sm:space-x-3">
-              <button
-                onClick={handleBackToSelection}
-                className="p-2 sm:p-2.5 rounded-xl bg-[#FFFFFF] border border-[#CADBC4] text-[#203D1F] hover:bg-[#F0EBE0] transition-colors flex items-center justify-center text-xs sm:text-sm font-semibold space-x-1.5 shadow-2xs"
-                title="Return to selection screen"
-              >
-                <Grid className="w-4 h-4" />
-                <span className="hidden sm:inline">Choose Area</span>
-              </button>
+          {/* Left: Logo + Back + Module Dropdown */}
+          <div className="flex items-center gap-2.5 min-w-0">
+            {/* Back to home */}
+            <button
+              onClick={handleBackToLanding}
+              className="p-2 rounded-lg bg-white border border-[#CADBC4] text-[#203D1F] hover:bg-[#F0EBE0] transition-colors flex items-center gap-1.5 text-xs font-semibold shrink-0"
+              title="Back to EcoPulse overview"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Home</span>
+            </button>
 
-              <button
-                onClick={handleBackToLanding}
-                className="p-2 sm:p-2.5 rounded-xl bg-[#FFFFFF] border border-[#CADBC4] text-[#203D1F] hover:bg-[#F0EBE0] transition-colors flex items-center justify-center text-xs sm:text-sm font-semibold space-x-1.5 shadow-2xs"
-                title="Return to EcoPulse Landing Page"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                <span className="hidden sm:inline">Home</span>
-              </button>
-
-              <div className="w-10 h-10 rounded-xl bg-[#1B3826] text-[#E8EFE5] flex items-center justify-center shadow-xs">
-                <Leaf className="w-5 h-5 stroke-[2.2]" />
+            {/* Wordmark */}
+            <div className="flex items-center gap-2 shrink-0">
+              <div className="w-7 h-7 rounded-lg bg-[#1B3826] text-[#E8EFE5] flex items-center justify-center">
+                <Leaf className="w-4 h-4 stroke-[2.2]" />
               </div>
-
-              <div>
-                <div className="flex items-center space-x-2.5">
-                  <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#191C1A]">
-                    EcoPulse
-                  </h1>
-                  <span className="text-xs font-semibold tracking-wide uppercase bg-[#EAF2E7] text-[#203D1F] px-2.5 py-0.5 rounded-full border border-[#BFDBB7]">
-                    Operations Dashboard
-                  </span>
-                </div>
-                <p className="text-xs sm:text-sm text-[#486340] font-medium flex items-center space-x-1.5">
-                  <span>Campus Sustainability Monitoring &amp; Decision Support System</span>
-                  <SproutingSeedling className="w-3.5 h-3.5 text-[#355C2A]" opacity={0.75} />
-                </p>
-              </div>
+              <span className="text-base font-bold text-[#191C1A] hidden sm:block tracking-tight">EcoPulse</span>
             </div>
 
-            {/* Grounded Live Status Metrics */}
-            <div className="flex items-center flex-wrap gap-2.5">
-              {/* Simulate Anomaly Button */}
-              <button
-                onClick={() => handleTriggerDemoLeak('svvv-blk-a-cs-lab-2')}
-                className="text-xs font-medium text-[#203D1F] hover:text-[#1B3826] bg-white hover:bg-[#F0EBE0] border border-[#CADBC4] hover:border-[#A8C9A0] px-3 py-1.5 rounded-xl transition shadow-2xs flex items-center space-x-1.5 cursor-pointer"
-              >
-                <SlidersHorizontal className="w-3.5 h-3.5 text-[#486340]" />
-                <span>Simulate Anomaly</span>
-              </button>
+            <span className="text-[#CADBC4] text-sm hidden sm:block">/</span>
 
-              {/* Metric 1: Total Power */}
-              <div className="bg-[#FFFFFF] border border-[#CADBC4] px-4 py-2 rounded-xl flex items-center space-x-2.5 shadow-2xs">
-                <div className="w-8 h-8 rounded-lg bg-[#EAF2E7] text-[#1B3826] flex items-center justify-center">
-                  <Zap className="w-4 h-4" />
-                </div>
-                <div>
-                  <span className="text-xs font-semibold text-[#55694F] uppercase tracking-wider block">
-                    Simulated Power Draw
-                  </span>
-                  <span className="text-sm sm:text-base font-bold font-mono text-[#191C1A]">
-                    {(totalActiveWatts / 1000).toFixed(2)} kW
-                  </span>
-                </div>
-              </div>
-
-              {/* Metric 2: Ghost Leaks */}
-              <div className={`px-4 py-2 rounded-xl border flex items-center space-x-2.5 shadow-2xs transition-colors ${
-                activeGhostLeaksCount > 0 
-                  ? 'bg-[#FEF7EC] border-[#EFD5B2] text-[#874D00]' 
-                  : 'bg-[#FFFFFF] border-[#CADBC4] text-[#203D1F]'
-              }`}>
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                  activeGhostLeaksCount > 0 ? 'bg-[#FBE9CE] text-[#874D00]' : 'bg-[#EAF2E7] text-[#1B3826]'
-                }`}>
-                  {activeGhostLeaksCount > 0 ? (
-                    <AlertTriangle className="w-4 h-4" />
-                  ) : (
-                    <CheckCircle2 className="w-4 h-4" />
-                  )}
-                </div>
-                <div>
-                  <span className="text-xs font-semibold uppercase tracking-wider block opacity-90">
-                    Energy Leaks
-                  </span>
-                  <span className="text-sm sm:text-base font-bold font-mono">
-                    {activeGhostLeaksCount > 0 ? `${activeGhostLeaksCount} Anomaly Active` : '0 Leaks (Nominal)'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Metric 3: System Status */}
-              <div className="bg-[#FFFFFF] border border-[#CADBC4] px-4 py-2 rounded-xl flex items-center space-x-2.5 shadow-2xs">
-                <div className="w-8 h-8 rounded-lg bg-[#EAF2E7] text-[#1B3826] flex items-center justify-center">
-                  <ShieldCheck className="w-4 h-4" />
-                </div>
-                <div>
-                  <span className="text-xs font-semibold text-[#55694F] uppercase tracking-wider block">
-                    System
-                  </span>
-                  <span className="text-sm font-bold font-mono text-[#191C1A] flex items-center space-x-1.5">
-                    <span className="w-2 h-2 rounded-full bg-[#1B3826] inline-block" />
-                    <span>Nominal</span>
-                  </span>
-                </div>
-              </div>
-            </div>
+            {/* Module Dropdown */}
+            <ModuleDropdown activeTab={activeTab} onChange={handleTabChange} />
           </div>
 
-          {/* Operational Tab Navigation */}
-          <div className="flex space-x-2 mt-3.5 pt-3 border-t border-[#D8E4D2] overflow-x-auto pb-0.5">
-            <button
-              onClick={() => {
-                setActiveTab('MAP');
-                window.location.hash = '#map';
-              }}
-              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center space-x-2 shrink-0 ${
-                activeTab === 'MAP'
-                  ? 'bg-[#1B3826] text-white shadow-xs'
-                  : 'bg-[#FFFFFF] hover:bg-[#F2EFE6] text-[#485E40] border border-[#CADBC4]'
-              }`}
-            >
-              <Building2 className="w-4 h-4" />
-              <span>Campus Energy Map</span>
-            </button>
+          {/* Right: Status + Simulated badge */}
+          <div className="flex items-center gap-2.5 shrink-0">
+            {/* Current draw */}
+            <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-white border border-[#CADBC4] rounded-lg text-xs">
+              <Zap className="w-3.5 h-3.5 text-[#486340]" />
+              <span className="font-mono font-bold text-[#191C1A]">{(totalActiveWatts / 1000).toFixed(2)} kW</span>
+              <span className="text-[#8E9789] text-[11px]">draw</span>
+            </div>
 
-            <button
-              onClick={() => {
-                setActiveTab('SCANNER');
-                window.location.hash = '#scanner';
-              }}
-              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center space-x-2 shrink-0 ${
-                activeTab === 'SCANNER'
-                  ? 'bg-[#1B3826] text-white shadow-xs'
-                  : 'bg-[#FFFFFF] hover:bg-[#F2EFE6] text-[#485E40] border border-[#CADBC4]'
-              }`}
-            >
-              <Camera className="w-4 h-4" />
-              <span>Food Waste Audit</span>
-            </button>
+            {/* System status pill */}
+            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold ${
+              systemNormal
+                ? 'bg-[#F0FDF4] border-[#BBF7D0] text-[#166534]'
+                : 'bg-[#FFFBEB] border-[#FDE68A] text-[#B45309]'
+            }`}>
+              {systemNormal
+                ? <CheckCircle2 className="w-3.5 h-3.5" />
+                : <AlertTriangle className="w-3.5 h-3.5 animate-pulse" />}
+              <span className="hidden sm:inline">{systemNormal ? 'Normal' : `${activeGhostLeaksCount} Leak${activeGhostLeaksCount > 1 ? 's' : ''}`}</span>
+            </div>
 
-            <button
-              onClick={() => {
-                setActiveTab('MESS');
-                window.location.hash = '#mess';
-              }}
-              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center space-x-2 shrink-0 ${
-                activeTab === 'MESS'
-                  ? 'bg-[#1B3826] text-white shadow-xs'
-                  : 'bg-[#FFFFFF] hover:bg-[#F2EFE6] text-[#485E40] border border-[#CADBC4]'
-              }`}
-            >
-              <Utensils className="w-4 h-4" />
-              <span>Mess Planning &amp; Logistics</span>
-            </button>
-
-            <button
-              onClick={() => {
-                setActiveTab('LEADERBOARD');
-                window.location.hash = '#leaderboard';
-              }}
-              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center space-x-2 shrink-0 ${
-                activeTab === 'LEADERBOARD'
-                  ? 'bg-[#1B3826] text-white shadow-xs'
-                  : 'bg-[#FFFFFF] hover:bg-[#F2EFE6] text-[#485E40] border border-[#CADBC4]'
-              }`}
-            >
-              <Trophy className="w-4 h-4" />
-              <span>Department Standings &amp; Audit Ledger</span>
-            </button>
+            {/* Simulated badge */}
+            <span className="hidden lg:inline-flex items-center gap-1 text-[11px] text-[#8E9789] bg-[#F5F7F0] border border-[#E0E8DA] px-2 py-1 rounded-md">
+              <SproutingSeedling className="w-3 h-3 text-[#8E9789]" opacity={0.7} />
+              Simulated
+            </span>
           </div>
         </div>
       </header>
 
-      {/* Main Tab View */}
+      {/* ── Main Content ──────────────────────────────────────────────────── */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 relative z-10">
         {activeTab === 'MAP' && (
           <CampusMap
@@ -366,42 +313,20 @@ export function App() {
             onTriggerDemoLeak={handleTriggerDemoLeak}
             history={history}
             resolvingId={resolvingId}
+            totalActiveWatts={totalActiveWatts}
+            activeGhostLeaksCount={activeGhostLeaksCount}
           />
         )}
-
-        {activeTab === 'SCANNER' && <PlateScanner />}
-
-        {activeTab === 'MESS' && <MessPredictor />}
-
+        {activeTab === 'SCANNER'     && <PlateScanner />}
+        {activeTab === 'MESS'        && <MessPredictor />}
         {activeTab === 'LEADERBOARD' && <Leaderboard />}
       </main>
 
-      {/* Grounded Clean Footer */}
-      <footer className="border-t border-[#D8E4D2] bg-[#FAF6EE] py-4 text-xs sm:text-sm text-[#55694F] mt-auto relative z-10">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <div className="flex items-center space-x-2.5">
-            <span className="w-2 h-2 rounded-full bg-[#1B3826]" />
-            <span className="font-semibold text-[#191C1A]">EcoPulse Campus Decision Support</span>
-            <span className="text-[#8E9789]">•</span>
-            <span>Simulated Telemetry Sandbox</span>
-          </div>
-          <div className="flex items-center space-x-4 font-mono text-xs text-[#486340]">
-            <button 
-              onClick={handleBackToSelection}
-              className="text-[#1B3826] font-semibold hover:underline"
-            >
-              ← Choose Area
-            </button>
-            <button 
-              onClick={handleBackToLanding}
-              className="text-[#1B3826] font-semibold hover:underline"
-            >
-              ← Overview
-            </button>
-            <span className="bg-[#FFFFFF] text-[#203D1F] px-3 py-0.5 rounded-full border border-[#CADBC4]">
-              Telemetry Interval: 3s
-            </span>
-          </div>
+      {/* ── Minimal Footer ───────────────────────────────────────────────── */}
+      <footer className="border-t border-[#D8E4D2] py-3 text-xs text-[#8E9789] relative z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
+          <span>EcoPulse · Campus Sustainability · Simulated telemetry sandbox</span>
+          <span className="font-mono">3s refresh</span>
         </div>
       </footer>
     </div>

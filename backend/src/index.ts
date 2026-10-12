@@ -31,12 +31,15 @@ let departmentLeaderboard: DepartmentScore[] = [
 ];
 
 // 1. Campus Status & NILM Telemetry
+// Single snapshot per request — getStatus() adds random jitter on every call,
+// so deriving totals from separate calls produces contradictory readings.
 app.get('/api/campus-status', (_req, res) => {
+  const snapshot = simulator.getStatus();
   res.json({
     timestamp: new Date().toISOString(),
-    blocks: simulator.getStatus(),
-    totalActiveWatts: simulator.getStatus().reduce((sum, b) => sum + b.activePowerWatts, 0),
-    activeGhostLeaksCount: simulator.getStatus().filter((b) => b.hasGhostLeak).length,
+    blocks: snapshot,
+    totalActiveWatts: snapshot.reduce((sum, b) => sum + b.activePowerWatts, 0),
+    activeGhostLeaksCount: snapshot.filter((b) => b.hasGhostLeak).length,
     campusTotalPowerFactor: 0.96,
   });
 });
