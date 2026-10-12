@@ -23,11 +23,11 @@ interface DepartmentScore {
 }
 
 let departmentLeaderboard: DepartmentScore[] = [
-  { rank: 1, department: 'Computer Science & Engg', code: 'CSE', greenCredits: 4420, kwhSaved: 365, foodSavedKg: 84.5, streakDays: 14, activeWarriors: 142 },
-  { rank: 2, department: 'Mechanical Engineering', code: 'ME', greenCredits: 3980, kwhSaved: 310, foodSavedKg: 71.0, streakDays: 9, activeWarriors: 98 },
-  { rank: 3, department: 'Civil Engineering', code: 'CE', greenCredits: 3250, kwhSaved: 225, foodSavedKg: 52.3, streakDays: 6, activeWarriors: 65 },
-  { rank: 4, department: 'Electronics & Comm (ECE)', code: 'ECE', greenCredits: 2980, kwhSaved: 195, foodSavedKg: 46.8, streakDays: 5, activeWarriors: 58 },
-  { rank: 5, department: 'Information Technology', code: 'IT', greenCredits: 2710, kwhSaved: 170, foodSavedKg: 40.2, streakDays: 4, activeWarriors: 52 },
+  { rank: 1, department: 'Computer Science & Engg (Main Block)', code: 'CSE', greenCredits: 4420, kwhSaved: 365, foodSavedKg: 84.5, streakDays: 14, activeWarriors: 142 },
+  { rank: 2, department: 'Mechanical Engineering (Mech Block)', code: 'ME', greenCredits: 3980, kwhSaved: 310, foodSavedKg: 71.0, streakDays: 9, activeWarriors: 98 },
+  { rank: 3, department: 'Management Studies (MBA Block)', code: 'MBA', greenCredits: 3450, kwhSaved: 245, foodSavedKg: 62.0, streakDays: 7, activeWarriors: 75 },
+  { rank: 4, department: 'Information Technology (Main Block)', code: 'IT', greenCredits: 2980, kwhSaved: 195, foodSavedKg: 46.8, streakDays: 5, activeWarriors: 58 },
+  { rank: 5, department: 'Central Hostel Dining Council', code: 'HOSTEL', greenCredits: 2710, kwhSaved: 170, foodSavedKg: 40.2, streakDays: 4, activeWarriors: 52 },
 ];
 
 // 1. Campus Status & NILM Telemetry
@@ -151,10 +151,60 @@ app.get('/api/mess-forecast', (req, res) => {
 
 // 8. Deep Tech Computer Vision Food Waste Volumetric & GHG Analyzer
 app.post('/api/scan-plate', (req, res) => {
-  const { imageBase64, simulatedPlateType = 'NORMAL_TRAY' } = req.body;
+  const { imageBase64, isWebcam = false, simulatedPlateType = 'NORMAL_TRAY' } = req.body;
+
+  // Real Camera Image Validation:
+  // If user turned on camera, analyze the captured image
+  if (isWebcam && imageBase64) {
+    // Decode base64 buffer sample to analyze pixel variance and color composition
+    try {
+      const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+      const buffer = Buffer.from(base64Data, 'base64');
+      
+      // If image is very small or corrupted
+      if (buffer.length < 5000) {
+        res.status(400).json({
+          status: 'error',
+          error: 'Camera frame underexposed or blurred. Please hold tray steady.',
+        });
+        return;
+      }
+
+      // Sample bytes to calculate warm chroma (food hues) vs cool/dark indoor background
+      let warmFoodBytes = 0;
+      let coolRoomBytes = 0;
+      const step = Math.max(1, Math.floor(buffer.length / 5000));
+      for (let i = 0; i < buffer.length; i += step * 3) {
+        const r = buffer[i] || 0;
+        const g = buffer[i + 1] || 0;
+        const b = buffer[i + 2] || 0;
+        
+        // Food tones (grains, pulses, gravies, rotis) typically have warm chromaticity (R > B + 20 and G > B)
+        if (r > b + 25 && g > b) {
+          warmFoodBytes++;
+        } else if (b > r + 15 || (r < 60 && g < 60 && b < 60)) {
+          coolRoomBytes++;
+        }
+      }
+
+      const warmFoodRatio = warmFoodBytes / (warmFoodBytes + coolRoomBytes + 1);
+
+      // If the camera is pointed at computer screens, dark room, or keyboard with no food tones
+      if (warmFoodRatio < 0.22) {
+        res.json({
+          status: 'error',
+          error: 'No food plate or dining tray detected in camera viewfinder! (Point camera at food tray or use calibrated preset)',
+          detectionConfidence: Number((warmFoodRatio * 1.5).toFixed(2)),
+          recommendation: 'Please place a dining tray or food plate within the viewfinder frame.',
+        });
+        return;
+      }
+    } catch (e) {
+      console.warn('Frame inspection warning:', e);
+    }
+  }
 
   // Deep Tech Volumetric Heuristic Model (Simulating Edge OpenCV Contour Area & Depth)
-  // If simulatedPlateType provided, calibrates with typical student tray waste
   let leftoverPct: number;
   let foodCategory: string;
 
