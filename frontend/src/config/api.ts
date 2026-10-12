@@ -15,5 +15,7 @@ export const API_ENDPOINTS = {
   auditLogs: `${API_BASE_URL}/api/audit-logs`,
   leaderboard: `${API_BASE_URL}/api/leaderboard`,
   messForecast: (params: string) => `${API_BASE_URL}/api/mess-forecast${params}`,
+  messForecastHistory: `${API_BASE_URL}/api/mess-forecast/history`,
+  messForecastActual: `${API_BASE_URL}/api/mess-forecast/actual`,
   scanPlate: `${API_BASE_URL}/api/scan-plate`,
 };

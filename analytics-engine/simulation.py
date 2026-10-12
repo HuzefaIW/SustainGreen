@@ -1,17 +1,17 @@
 """
-Member 5: Multivariate Predictive Mess Demand & Kitchen BOM Engine
-Forecasts student turnout by fusing historical attendance curves, day-of-week decay,
-real-time precipitation weather signals, and academic examination periods.
-Generates automated raw ingredient Bill of Materials (BOM) to eliminate over-cooking.
+EcoPulse: Mess Demand & Kitchen Preparation Forecasting Reference Model
+NOTE: The Express backend (GET /api/mess-forecast) is the authoritative runtime source of truth.
+Calculates student turnout via institutional attendance curves, precipitation elasticity,
+and academic examination surges. Recommends preparation quantities with a 5% safety buffer.
 """
 import json
-import math
 
 def forecast_mess_demand(
     total_hostel_students: int = 1200,
     day_of_week: str = "Friday",
     weather: str = "Rainy",
-    is_exam_week: bool = False
+    is_exam_week: bool = False,
+    safety_buffer_pct: float = 5.0
 ) -> dict:
     # 1. Base Day Attendance Decay Multipliers
     day_attendance_factor = {
@@ -34,20 +34,32 @@ def forecast_mess_demand(
     if is_exam_week:
         factor += 0.08
         
-    factor = min(1.0, max(0.4, factor))
-    expected_eaters = int(total_hostel_students * factor)
+    factor = min(1.0, max(0.40, factor))
+    expected_eaters = int(round(total_hostel_students * factor))
     
-    # 4. Conventional Blind Prep vs AI Demand Prep
-    blind_cooked_kg = round(total_hostel_students * 0.38, 1) # 380g standard portion
-    recommended_cook_kg = round(expected_eaters * 0.36, 1)   # Calibrated portion with safety buffer
-    saved_food_kg = round(max(0.0, blind_cooked_kg - recommended_cook_kg), 1)
+    # 4. Conventional Blind Prep vs Demand-Matched Recommended Prep with 5% Safety Buffer
+    blind_cooked_kg = round(total_hostel_students * 0.380, 1) # 380g standard portion
+    buffer_mult = 1.0 + (safety_buffer_pct / 100.0)
+    recommended_cook_kg = round(expected_eaters * 0.360 * buffer_mult, 1)   # Calibrated portion with safety buffer
+    avoidable_overproduction_kg = round(max(0.0, blind_cooked_kg - recommended_cook_kg), 1)
     
     # 5. Financial & Environmental Conversion
-    cost_saved_inr = round(saved_food_kg * 85.0, 2)          # ₹85/kg subsidized prep cost
-    co2e_saved_kg = round(saved_food_kg * 2.5, 2)            # IPCC 2.5 kg CO2e / kg food
-    water_saved_liters = int(saved_food_kg * 1200)           # 1200 L virtual water / kg food
+    cost_saved_inr = round(avoidable_overproduction_kg * 85.0, 2)          # ₹85/kg subsidized prep cost
+    co2e_saved_kg = round(avoidable_overproduction_kg * 2.5, 2)            # IPCC 2.5 kg CO2e / kg food
+    water_saved_liters = int(avoidable_overproduction_kg * 1200)           # 1200 L virtual water / kg food
     
-    # 6. Automated Kitchen Procurement Bill of Materials (BOM)
+    # 6. Qualitative Uncertainty Assessment (No fake confidence percentages)
+    if day_of_week in ["Friday", "Saturday", "Sunday"]:
+        uncertainty = "high"
+        uncertainty_reason = "Weekend departures cause higher demand variance."
+    elif weather.lower() == "rainy":
+        uncertainty = "medium"
+        uncertainty_reason = "Precipitation retains additional students on-campus."
+    else:
+        uncertainty = "low"
+        uncertainty_reason = "Stable weekday attendance."
+
+    # 7. Automated Kitchen Procurement Bill of Materials (BOM)
     bom = {
         "grain_rice_kg": round(expected_eaters * 0.12, 1),
         "dal_pulses_kg": round(expected_eaters * 0.05, 1),
@@ -68,12 +80,13 @@ def forecast_mess_demand(
             "expectedDiners": expected_eaters,
             "turnoutPercentage": round(factor * 100, 1),
             "conventionalCookingKg": blind_cooked_kg,
-            "aiOptimizedCookingKg": recommended_cook_kg,
-            "preventedFoodWasteKg": saved_food_kg,
-            "budgetSavedDailyInr": cost_saved_inr,
-            "co2eSavedKg": co2e_saved_kg,
-            "virtualWaterSavedLiters": water_saved_liters,
-            "confidenceIntervalPct": 94.8
+            "recommendedCookingKg": recommended_cook_kg,
+            "projectedAvoidableOverproductionKg": avoidable_overproduction_kg,
+            "projectedCostAvoidedInr": cost_saved_inr,
+            "projectedCo2eAvoidedKg": co2e_saved_kg,
+            "projectedWaterAvoidedLiters": water_saved_liters,
+            "uncertainty": uncertainty,
+            "uncertaintyReason": uncertainty_reason
         },
         "kitchenBillOfMaterials": bom
     }

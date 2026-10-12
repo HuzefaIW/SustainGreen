@@ -14,6 +14,9 @@ try {
   console.log('\n>> Running Test Suite 3: /api/scan-plate API Integration');
   execSync('npx tsx src/services/apiIntegration.test.ts', { stdio: 'inherit' });
 
+  console.log('\n>> Running Test Suite 4: Smart Mess Forecast Engine');
+  execSync('npx tsx src/services/messForecastEngine.test.ts', { stdio: 'inherit' });
+
   console.log('\n====================================================');
   console.log('   ALL ECOPULSE TEST SUITES COMPLETED SUCCESSFULLY!  ');
   console.log('====================================================\n');

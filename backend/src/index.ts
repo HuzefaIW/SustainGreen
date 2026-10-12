@@ -8,6 +8,11 @@ import {
   analyzeFoodPlateImage,
   getCalibratedPresetAudit,
 } from './services/geminiVision.js';
+import {
+  calculateMessForecast,
+  getForecastHistory,
+  recordActualDiners,
+} from './services/messForecastEngine.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -158,56 +163,64 @@ app.get('/api/leaderboard', (_req, res) => {
 
 // 7. Predictive Mess Kitchen Engine
 app.get('/api/mess-forecast', (req, res) => {
-  const day = (req.query.day as string) || 'Monday';
-  const weather = (req.query.weather as string) || 'Sunny'; // Sunny | Rainy
-  const isExam = req.query.isExam === 'true';
-  const totalHostelStudents = 1200;
+  try {
+    const day = req.query.day as string | undefined;
+    const weather = req.query.weather as string | undefined;
+    const isExam = req.query.isExam === 'true';
+    const totalHostelStudents = req.query.totalStudents ? parseInt(req.query.totalStudents as string, 10) : undefined;
+    const foodCostPerKg = req.query.costPerKg ? parseFloat(req.query.costPerKg as string) : undefined;
+    const safetyBufferPercent = req.query.buffer ? parseFloat(req.query.buffer as string) : undefined;
+    const mealPeriod = (req.query.meal as string) || 'Lunch';
 
-  const dayFactors: Record<string, number> = {
-    Monday: 0.92,
-    Tuesday: 0.90,
-    Wednesday: 0.88,
-    Thursday: 0.84,
-    Friday: 0.70, // Weekend departures
-    Saturday: 0.62,
-    Sunday: 0.68,
-  };
+    const auditLogs = simulator.getAuditLogs();
+    const forecast = calculateMessForecast({
+      day,
+      weather,
+      isExam,
+      totalHostelStudents,
+      foodCostPerKg,
+      safetyBufferPercent,
+      mealPeriod,
+    }, auditLogs);
 
-  let factor = dayFactors[day] || 0.85;
-  if (weather === 'Rainy') factor += 0.06; // Rain keeps students on-campus
-  if (isExam) factor += 0.08;             // Exams spike hostel dining
+    res.json({
+      ...forecast,
+      // Backwards-compatible aliases for existing consumers
+      day: forecast.parameters.day,
+      weather: forecast.parameters.weather,
+      isExam: forecast.parameters.isExam,
+      totalHostelStudents: forecast.parameters.totalHostelStudents,
+      savedFoodKg: forecast.projectedAvoidableOverproductionKg,
+      costSavedInr: forecast.projectedCostAvoidedInr,
+      co2eSavedKg: forecast.projectedCo2eAvoidedKg,
+      waterSavedLiters: forecast.projectedWaterAvoidedLiters,
+    });
+  } catch (err: any) {
+    console.error('Failed to generate mess forecast:', err);
+    res.status(500).json({ error: 'Failed to generate mess forecast' });
+  }
+});
 
-  const expectedDiners = Math.min(totalHostelStudents, Math.round(totalHostelStudents * factor));
-  const conventionalCookKg = Math.round(totalHostelStudents * 0.38); // 380g per head
-  const optimizedCookKg = Math.round(expectedDiners * 0.36);
-  const savedFoodKg = Math.max(0, conventionalCookKg - optimizedCookKg);
-  const costSavedInr = Math.round(savedFoodKg * 85);
-  const co2eSavedKg = Number((savedFoodKg * 2.5).toFixed(1));
-  const waterSavedLiters = savedFoodKg * 1200;
-
-  // Recipe Bill of Materials (BOM) Decomposition
-  const bom = {
-    grainRiceKg: Math.round(expectedDiners * 0.12),
-    dalPulsesKg: Math.round(expectedDiners * 0.05),
-    wheatFlourAttaKg: Math.round(expectedDiners * 0.09),
-    freshVegetablesKg: Math.round(expectedDiners * 0.14),
-    cookingOilLiters: Math.round(expectedDiners * 0.02),
-  };
-
+// 7b. Mess Forecast History Log
+app.get('/api/mess-forecast/history', (_req, res) => {
   res.json({
-    day,
-    weather,
-    isExam,
-    totalHostelStudents,
-    expectedDiners,
-    conventionalCookKg,
-    optimizedCookKg,
-    savedFoodKg,
-    costSavedInr,
-    co2eSavedKg,
-    waterSavedLiters,
-    bom,
+    history: getForecastHistory(),
   });
+});
+
+// 7c. Record Actual Diner Attendance (Optional comparison)
+app.post('/api/mess-forecast/actual', (req, res) => {
+  const { forecastId, actualDiners, actualCookedKg } = req.body;
+  if (!forecastId || typeof actualDiners !== 'number') {
+    res.status(400).json({ error: 'forecastId and actualDiners (number) are required' });
+    return;
+  }
+  const updated = recordActualDiners(forecastId, actualDiners, actualCookedKg);
+  if (!updated) {
+    res.status(404).json({ error: `Forecast "${forecastId}" not found in session history.` });
+    return;
+  }
+  res.json({ success: true, message: 'Actual diner count recorded against forecast.' });
 });
 
 // 8. Food Waste Audit (Real Gemini Vision Image Analysis & Calibrated Simulation)
