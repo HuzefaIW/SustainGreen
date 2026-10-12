@@ -1,45 +1,50 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
-  Camera, Upload, Sparkles, AlertCircle, Award, Droplets, 
-  Flame, IndianRupee, RefreshCw, CheckCircle, Eye, ShieldAlert,
-  Sliders, Info, Scan, Terminal
+  Camera, Utensils, AlertCircle, Award, Droplets, 
+  Flame, IndianRupee, RefreshCw, CheckCircle2, ChevronDown, 
+  ChevronUp, Info, History, Sparkles, Leaf
 } from 'lucide-react';
 import { API_ENDPOINTS } from '../../config/api';
-
-interface VisionMetrics {
-  plateSurfaceAreaMm2: number;
-  segmentedFoodAreaMm2: number;
-  estimatedFoodVolumeCm3: number;
-  foodRemnantClass: string;
-  detectionConfidence: number;
-}
 
 interface ScanAuditResult {
   leftoverPercentage: number;
   estimatedFoodWastedGrams: number;
+  estimatedFoodConsumedGrams: number;
+  standardMealWeightGrams: number;
   co2eEmittedKg: number;
-  methaneEquivalentGrams: number;
   virtualWaterWastedLiters: number;
   financialLossInr: number;
   greenCreditsEarned: number;
   statusBadge: string;
   badgeColor: string;
+  foodRemnantClass: string;
 }
 
 interface ScanResponse {
   status: string;
   timestamp: string;
-  visionMetrics: VisionMetrics;
   audit: ScanAuditResult;
   recommendation: string;
 }
 
+interface AuditHistoryItem {
+  id: string;
+  timestamp: string;
+  preset: string;
+  wastedGrams: number;
+  leftoverPct: number;
+  creditsEarned: number;
+}
+
 export const PlateScanner: React.FC = () => {
   const [analyzing, setAnalyzing] = useState(false);
-  const [selectedPreset, setSelectedPreset] = useState<'NORMAL_TRAY' | 'HEAVY_WASTE' | 'CLEAN_TRAY'>('NORMAL_TRAY');
+  const [selectedPreset, setSelectedPreset] = useState<'CLEAN_TRAY' | 'NORMAL_TRAY' | 'HEAVY_WASTE'>('NORMAL_TRAY');
   const [useWebcam, setUseWebcam] = useState(false);
   const [result, setResult] = useState<ScanResponse | null>(null);
   const [scanError, setScanError] = useState<string | null>(null);
+  const [showMethodology, setShowMethodology] = useState(false);
+  const [historyList, setHistoryList] = useState<AuditHistoryItem[]>([]);
+
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
@@ -72,8 +77,10 @@ export const PlateScanner: React.FC = () => {
   }, [useWebcam]);
 
   const handleRunAudit = async () => {
+    if (analyzing) return;
     setAnalyzing(true);
     setScanError(null);
+
     try {
       let capturedImage: string | null = null;
       if (useWebcam && videoRef.current) {
@@ -94,296 +101,383 @@ export const PlateScanner: React.FC = () => {
         body: JSON.stringify({ 
           imageBase64: capturedImage,
           isWebcam: useWebcam,
-          simulatedPlateType: selectedPreset 
+          simulatedPlateType: selectedPreset,
+          department: 'Central Hostel Dining Council'
         }),
       });
+
+      if (!res.ok) {
+        throw new Error(`Server returned HTTP ${res.status}`);
+      }
+
       const data = await res.json();
       if (data.status === 'error') {
-        setScanError(data.error || 'No food plate detected in frame.');
+        setScanError(data.error || 'Unable to complete food plate audit.');
         setResult(null);
       } else {
         setResult(data);
         setScanError(null);
+
+        // Record in local session history
+        const newHistoryItem: AuditHistoryItem = {
+          id: `audit-${Date.now()}`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          preset: selectedPreset === 'CLEAN_TRAY' ? 'Zero-Waste Tray' : selectedPreset === 'NORMAL_TRAY' ? 'Average Thali' : 'High Waste Tray',
+          wastedGrams: data.audit.estimatedFoodWastedGrams,
+          leftoverPct: data.audit.leftoverPercentage,
+          creditsEarned: data.audit.greenCreditsEarned,
+        };
+        setHistoryList(prev => [newHistoryItem, ...prev.slice(0, 4)]);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to run plate audit:', err);
-      setScanError('Failed to process image frame.');
+      setScanError(err.message || 'Network error while contacting the audit service.');
     } finally {
       setAnalyzing(false);
     }
   };
 
+  const PRESETS = [
+    {
+      key: 'CLEAN_TRAY' as const,
+      label: 'Zero-Waste Tray',
+      description: 'Clean plate surface with minimal traces (~5% leftovers)',
+      badge: '~19g waste',
+      color: 'border-[#BBF7D0] bg-[#F0FDF4]',
+    },
+    {
+      key: 'NORMAL_TRAY' as const,
+      label: 'Average Thali',
+      description: 'Typical dining portion with small leftover carb or gravy (~24%)',
+      badge: '~91g waste',
+      color: 'border-[#D8E4D2] bg-white',
+    },
+    {
+      key: 'HEAVY_WASTE' as const,
+      label: 'High Waste Tray',
+      description: 'Substantial unfinished rice, bread, or side portions (~42%)',
+      badge: '~160g waste',
+      color: 'border-[#FDE68A] bg-[#FFFDF7]',
+    },
+  ];
+
   return (
     <div className="space-y-6">
-      {/* Vercel Header Card */}
-      <div className="bg-white border border-zinc-200/90 rounded-xl p-5 shadow-subtle flex flex-col md:flex-row md:items-center justify-between gap-4">
+
+      {/* ── Section A: Page Heading ────────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
-          <div className="flex items-center space-x-2">
-            <h3 className="text-sm font-semibold text-zinc-900">AI Computer Vision Plate Waste Scanner</h3>
-            <span className="text-[10px] font-mono text-zinc-500 bg-zinc-100 px-1.5 py-0.5 rounded">
-              OPENCV & VOLUMETRIC HUD
-            </span>
-          </div>
-          <p className="text-xs text-zinc-500 mt-0.5">
-            Monocular depth contour analysis & IPCC AR6 / DEFRA climate accounting
+          <h2 className="font-serif text-2xl sm:text-3xl font-medium text-[#191C1A] leading-tight">
+            Food Waste Audit
+          </h2>
+          <p className="text-sm text-[#486340] mt-1">
+            Estimate leftover food and understand its potential environmental impact.
           </p>
         </div>
-
-        {/* Clean Segmented Control */}
-        <div className="flex items-center space-x-1 bg-zinc-100 p-1 rounded-lg text-xs">
-          <button
-            onClick={() => setSelectedPreset('CLEAN_TRAY')}
-            className={`px-3 py-1.5 rounded-md transition font-medium cursor-pointer ${
-              selectedPreset === 'CLEAN_TRAY'
-                ? 'bg-white text-zinc-900 shadow-xs'
-                : 'text-zinc-500 hover:text-zinc-900'
-            }`}
-          >
-            Zero-Waste Tray
-          </button>
-          <button
-            onClick={() => setSelectedPreset('NORMAL_TRAY')}
-            className={`px-3 py-1.5 rounded-md transition font-medium cursor-pointer ${
-              selectedPreset === 'NORMAL_TRAY'
-                ? 'bg-white text-zinc-900 shadow-xs'
-                : 'text-zinc-500 hover:text-zinc-900'
-            }`}
-          >
-            Average Thali
-          </button>
-          <button
-            onClick={() => setSelectedPreset('HEAVY_WASTE')}
-            className={`px-3 py-1.5 rounded-md transition font-medium cursor-pointer ${
-              selectedPreset === 'HEAVY_WASTE'
-                ? 'bg-white text-zinc-900 shadow-xs'
-                : 'text-zinc-500 hover:text-zinc-900'
-            }`}
-          >
-            High Waste Tray
-          </button>
-        </div>
+        <span className="inline-flex items-center gap-1.5 text-xs text-[#8E9789] bg-[#F5F7F0] border border-[#E0E8DA] px-2.5 py-1.5 rounded-lg self-start sm:self-auto">
+          <Leaf className="w-3.5 h-3.5 text-[#486340]" />
+          Rule-based simulation · 380g standard thali
+        </span>
       </div>
 
-      {/* Main Scanner Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left: Viewfinder (7 cols) */}
-        <div className="lg:col-span-7 bg-white border border-zinc-200/90 rounded-xl p-5 shadow-subtle flex flex-col justify-between">
+      {/* ── Section B: Plate Preset Selection ─────────────────────────────── */}
+      <div className="bg-white border border-[#D8E4D2] rounded-2xl p-5 shadow-2xs">
+        <div className="flex items-center justify-between mb-3.5">
           <div>
-            <div className="flex justify-between items-center mb-3">
-              <span className="text-xs font-medium text-zinc-700 flex items-center space-x-1.5">
-                <Camera className="w-3.5 h-3.5 text-zinc-400" />
-                <span>Mess Dining Tray Viewfinder</span>
-              </span>
+            <h3 className="text-sm font-semibold text-[#191C1A]">1. Choose a Plate Preset</h3>
+            <p className="text-xs text-[#8E9789] mt-0.5">
+              Select a representative tray condition to calibrate the audit estimate.
+            </p>
+          </div>
+          <button
+            onClick={() => setUseWebcam(prev => !prev)}
+            className="text-xs text-[#486340] hover:text-[#1B3826] font-medium transition flex items-center gap-1 underline underline-offset-2"
+          >
+            <Camera className="w-3.5 h-3.5" />
+            <span>{useWebcam ? 'Switch to Preset Diagram' : 'Use Device Camera Feed'}</span>
+          </button>
+        </div>
+
+        {/* 3 Preset Options */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {PRESETS.map((p) => {
+            const isSelected = selectedPreset === p.key;
+            return (
               <button
-                onClick={() => setUseWebcam(!useWebcam)}
-                className="text-xs text-zinc-600 hover:text-zinc-900 transition underline underline-offset-4 cursor-pointer font-medium"
+                key={p.key}
+                type="button"
+                onClick={() => setSelectedPreset(p.key)}
+                className={`text-left p-4 rounded-xl border-2 transition-all relative ${
+                  isSelected
+                    ? 'border-[#1B3826] bg-[#F2F7F0] shadow-2xs ring-1 ring-[#1B3826]/10'
+                    : 'border-[#E0E8DA] hover:border-[#CADBC4] bg-[#FAF8F5]'
+                }`}
               >
-                {useWebcam ? 'Switch to Preset Graphic' : 'Enable Live Device Webcam'}
-              </button>
-            </div>
-
-            {/* Viewfinder Window */}
-            <div className="relative aspect-video w-full rounded-xl overflow-hidden bg-zinc-950 border border-zinc-800 flex items-center justify-center group shadow-subtle">
-              {useWebcam ? (
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="relative w-full h-full bg-gradient-to-br from-zinc-900 via-zinc-950 to-zinc-900 flex flex-col items-center justify-center p-6 text-center">
-                  {/* Visual Tray Simulation Graphic */}
-                  <div className="w-56 h-36 rounded-xl border border-dashed border-zinc-700 bg-zinc-900/90 p-3.5 flex flex-col justify-between relative shadow-lg">
-                    <div className="flex justify-between">
-                      <div className={`w-11 h-11 rounded-lg border ${selectedPreset === 'CLEAN_TRAY' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' : 'border-zinc-700 bg-zinc-800 text-zinc-400'} flex items-center justify-center text-[10px] font-mono`}>
-                        Dal
-                      </div>
-                      <div className={`w-11 h-11 rounded-lg border ${selectedPreset === 'CLEAN_TRAY' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' : 'border-zinc-700 bg-zinc-800 text-zinc-400'} flex items-center justify-center text-[10px] font-mono`}>
-                        Sabzi
-                      </div>
-                    </div>
-                    <div className={`w-full h-12 rounded-lg border ${selectedPreset === 'CLEAN_TRAY' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' : selectedPreset === 'HEAVY_WASTE' ? 'border-rose-500/40 bg-rose-500/20 text-rose-300' : 'border-zinc-700 bg-zinc-800 text-zinc-300'} flex items-center justify-center text-xs font-mono font-medium`}>
-                      {selectedPreset === 'CLEAN_TRAY' ? 'Clean Plate Surface (Zero Remnants)' : selectedPreset === 'HEAVY_WASTE' ? 'Heavy Rice & Bread Waste Detected' : 'Standard Mess Rice & Roti Portions'}
-                    </div>
-
-                    {/* HUD Target Reticle */}
-                    <div className="absolute inset-0 border border-zinc-600/40 pointer-events-none rounded-xl" />
-                  </div>
-
-                  <span className="text-[11px] text-zinc-500 mt-4 font-mono">
-                    Target Reference: Stainless Steel 5-Compartment Tray (350×250mm)
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className={`text-sm font-semibold ${isSelected ? 'text-[#1B3826]' : 'text-[#191C1A]'}`}>
+                    {p.label}
+                  </span>
+                  <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-white border border-[#D8E4D2] text-[#486340]">
+                    {p.badge}
                   </span>
                 </div>
-              )}
-
-              {/* Status Overlay Chips */}
-              <div className="absolute top-3 left-3 px-2 py-0.5 bg-zinc-900/90 backdrop-blur rounded text-[10px] font-mono font-medium text-emerald-400 border border-zinc-700 flex items-center space-x-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span>AI VISION READY</span>
-              </div>
-
-              <div className="absolute top-3 right-3 px-2 py-0.5 bg-zinc-900/90 backdrop-blur rounded text-[10px] font-mono font-medium text-zinc-400 border border-zinc-700">
-                REF: 350x250mm
-              </div>
-
-              <div className="absolute bottom-3 left-3 right-3 flex justify-between items-center text-[10px] font-mono text-zinc-400 bg-zinc-900/90 backdrop-blur px-2.5 py-1 rounded-md border border-zinc-800">
-                <span>VOLUMETRIC SURFACE RESOLUTION: 1080p</span>
-                <span>FOCAL: MONOCULAR DEPTH</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Vercel Primary Button */}
-          <div className="mt-4">
-            <button
-              onClick={handleRunAudit}
-              disabled={analyzing}
-              className="w-full py-2.5 bg-zinc-900 hover:bg-black text-white font-medium text-xs rounded-lg transition shadow-xs flex items-center justify-center space-x-2 cursor-pointer"
-            >
-              {analyzing ? (
-                <>
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-zinc-400" />
-                  <span>Computing OpenCV Contours & Food Density...</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-3.5 h-3.5 text-zinc-400" />
-                  <span>Execute AI Tray Audit & Carbon Calculation</span>
-                </>
-              )}
-            </button>
-          </div>
+                <p className="text-xs text-[#6B7B68] leading-relaxed">
+                  {p.description}
+                </p>
+              </button>
+            );
+          })}
         </div>
 
-        {/* Right: Results Inspector (5 cols) */}
-        <div className="lg:col-span-5 bg-white border border-zinc-200/90 rounded-xl p-5 shadow-subtle flex flex-col justify-between">
-          <div>
-            <div className="flex justify-between items-center mb-4 pb-3 border-b border-zinc-100">
-              <h4 className="text-sm font-semibold text-zinc-900 flex items-center space-x-2">
-                <Award className="w-4 h-4 text-zinc-400" />
-                <span>Tray Audit & Climate Receipt</span>
-              </h4>
-              {result && (
-                <span className="text-[10px] font-mono text-zinc-500 bg-zinc-100 px-1.5 py-0.5 rounded">
-                  CONF: {(result.visionMetrics.detectionConfidence * 100).toFixed(1)}%
-                </span>
-              )}
+        {/* Optional Webcam Preview (if user enabled it) */}
+        {useWebcam && (
+          <div className="mt-4 p-3 bg-[#F5F7F0] border border-[#D8E4D2] rounded-xl">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-[#486340] flex items-center gap-1.5">
+                <Camera className="w-3.5 h-3.5" />
+                Live Viewfinder Feed
+              </span>
+              <span className="text-[11px] text-[#8E9789]">
+                Reference: 350×250mm standard steel tray
+              </span>
             </div>
+            <div className="relative aspect-video max-h-56 w-full rounded-lg overflow-hidden bg-black flex items-center justify-center">
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className="w-full h-full object-cover"
+              />
+            </div>
+          </div>
+        )}
 
-            {scanError && (
-              <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-900 space-y-2 mb-4 shadow-subtle">
-                <div className="flex items-center space-x-2 font-semibold text-rose-800">
-                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-                  <span>Computer Vision Validation: No Tray Detected</span>
-                </div>
-                <p className="text-[11px] text-rose-700 leading-relaxed font-medium">
-                  {scanError}
-                </p>
-                <div className="p-2.5 bg-white/90 rounded-lg border border-rose-200 text-[11px] text-rose-800 font-mono">
-                  💡 <strong>Status:</strong> Point camera at an actual dining tray or select a calibrated preset above.
-                </div>
-              </div>
-            )}
-
-            {result ? (
-              <div className="space-y-3.5">
-                {/* Status Hero Card */}
-                <div className="p-3.5 rounded-lg bg-zinc-50 border border-zinc-200/80 flex items-center justify-between">
-                  <div>
-                    <span className="text-[10px] text-zinc-400 block font-mono">CLASSIFICATION</span>
-                    <h5 className="text-xs font-semibold text-zinc-900 mt-0.5">
-                      {result.audit.statusBadge}
-                    </h5>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-[10px] text-zinc-400 block font-mono">GREEN CREDITS</span>
-                    <span className="text-base font-bold font-mono text-emerald-600">
-                      +{result.audit.greenCreditsEarned} pts
-                    </span>
-                  </div>
-                </div>
-
-                {/* 4 Metric Badges */}
-                <div className="grid grid-cols-2 gap-2.5">
-                  <div className="p-3 rounded-lg bg-white border border-zinc-200 shadow-2xs">
-                    <span className="text-[10px] text-zinc-400 font-mono block">FOOD LEFTOVER</span>
-                    <span className="text-sm font-bold font-mono text-zinc-900 mt-0.5 block">
-                      {result.audit.leftoverPercentage}% ({result.audit.estimatedFoodWastedGrams}g)
-                    </span>
-                  </div>
-
-                  <div className="p-3 rounded-lg bg-white border border-zinc-200 shadow-2xs">
-                    <span className="text-[10px] text-zinc-400 font-mono block flex items-center space-x-1">
-                      <Flame className="w-3 h-3 text-rose-500" />
-                      <span>CO2e FOOTPRINT</span>
-                    </span>
-                    <span className="text-sm font-bold font-mono text-zinc-900 mt-0.5 block">
-                      {result.audit.co2eEmittedKg} kg
-                    </span>
-                  </div>
-
-                  <div className="p-3 rounded-lg bg-white border border-zinc-200 shadow-2xs">
-                    <span className="text-[10px] text-zinc-400 font-mono block flex items-center space-x-1">
-                      <Droplets className="w-3 h-3 text-blue-500" />
-                      <span>VIRTUAL WATER</span>
-                    </span>
-                    <span className="text-sm font-bold font-mono text-zinc-900 mt-0.5 block">
-                      {result.audit.virtualWaterWastedLiters} Liters
-                    </span>
-                  </div>
-
-                  <div className="p-3 rounded-lg bg-white border border-zinc-200 shadow-2xs">
-                    <span className="text-[10px] text-zinc-400 font-mono block flex items-center space-x-1">
-                      <IndianRupee className="w-3 h-3 text-emerald-600" />
-                      <span>FINANCIAL LOSS</span>
-                    </span>
-                    <span className="text-sm font-bold font-mono text-zinc-900 mt-0.5 block">
-                      ₹{result.audit.financialLossInr}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Volumetric Breakdown */}
-                <div className="p-3 rounded-lg bg-zinc-50 border border-zinc-200/70 text-xs space-y-1 font-mono">
-                  <div className="flex justify-between text-zinc-500 text-[11px]">
-                    <span>Plate Segmented Surface:</span>
-                    <span className="text-zinc-800 font-medium">{result.visionMetrics.segmentedFoodAreaMm2} mm²</span>
-                  </div>
-                  <div className="flex justify-between text-zinc-500 text-[11px]">
-                    <span>Estimated 3D Volume:</span>
-                    <span className="text-zinc-800 font-medium">{result.visionMetrics.estimatedFoodVolumeCm3} cm³</span>
-                  </div>
-                  <div className="flex justify-between text-zinc-500 text-[11px]">
-                    <span>Detected Food Remnant:</span>
-                    <span className="text-zinc-800 font-medium">{result.visionMetrics.foodRemnantClass}</span>
-                  </div>
-                </div>
-
-                {/* Behavioral Advice */}
-                <div className="p-3 rounded-lg bg-zinc-50 border border-zinc-200 text-xs text-zinc-700 leading-relaxed flex items-start space-x-2">
-                  <CheckCircle className="w-3.5 h-3.5 text-zinc-500 shrink-0 mt-0.5" />
-                  <span>{result.recommendation}</span>
-                </div>
-              </div>
+        {/* Primary Action Button */}
+        <div className="mt-5 pt-4 border-t border-[#EDF0E9] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <p className="text-xs text-[#8E9789]">
+            Audits calculate food weight left on plate relative to standard 380g thali serving.
+          </p>
+          <button
+            type="button"
+            onClick={handleRunAudit}
+            disabled={analyzing}
+            className="w-full sm:w-auto px-6 py-2.5 bg-[#1B3826] hover:bg-[#254D36] disabled:opacity-60 text-white text-sm font-semibold rounded-xl transition shadow-xs flex items-center justify-center gap-2 shrink-0 cursor-pointer"
+          >
+            {analyzing ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                <span>Estimating Plate Leftovers…</span>
+              </>
             ) : (
-              <div className="h-64 rounded-lg border border-dashed border-zinc-200 flex flex-col items-center justify-center text-center p-6 text-zinc-400">
-                <Sparkles className="w-6 h-6 text-zinc-300 mb-2" />
-                <p className="text-xs font-medium text-zinc-600">No Tray Scan Executed Yet</p>
-                <p className="text-[11px] text-zinc-400 mt-1">
-                  Choose a preset or live camera feed, then click "Execute AI Tray Audit".
-                </p>
-              </div>
+              <>
+                <Utensils className="w-4 h-4" />
+                <span>Run Food Waste Audit</span>
+              </>
             )}
-          </div>
-
-          <div className="pt-3 border-t border-zinc-100 text-[11px] text-zinc-400 flex justify-between items-center font-mono">
-            <span>DEFRA & IPCC AR6</span>
-            <span>SVVV Mess Ledger</span>
-          </div>
+          </button>
         </div>
       </div>
+
+      {/* Error state */}
+      {scanError && (
+        <div className="p-4 rounded-xl bg-[#FFFBEB] border border-[#FDE68A] text-xs text-[#92400E] flex items-start gap-3">
+          <AlertCircle className="w-4 h-4 text-[#F59E0B] shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold text-[#78350F]">Audit Unsuccessful</p>
+            <p className="mt-0.5">{scanError}</p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Section C: Audit Result Summary ──────────────────────────────── */}
+      {result && (
+        <div className="bg-white border border-[#D8E4D2] rounded-2xl p-5 shadow-2xs space-y-5 animate-in fade-in-50 duration-200">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#EDF0E9]">
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-[#191C1A]">2. Audit Summary & Environmental Impact</h3>
+                <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${
+                  result.audit.leftoverPercentage <= 10
+                    ? 'bg-[#F0FDF4] border-[#BBF7D0] text-[#166534]'
+                    : result.audit.leftoverPercentage <= 25
+                    ? 'bg-[#EFF6FF] border-[#BFDBFE] text-[#1D4ED8]'
+                    : 'bg-[#FFFBEB] border-[#FDE68A] text-[#B45309]'
+                }`}>
+                  {result.audit.statusBadge}
+                </span>
+              </div>
+              <p className="text-xs text-[#8E9789] mt-0.5">
+                Classified remnants: {result.audit.foodRemnantClass}
+              </p>
+            </div>
+            <div className="text-left sm:text-right">
+              <span className="text-xs text-[#8E9789] block">Sustainability Points</span>
+              <span className="text-base font-mono font-bold text-[#1B3826]">
+                +{result.audit.greenCreditsEarned} pts
+              </span>
+            </div>
+          </div>
+
+          {/* Core Consumption vs. Leftover Distinction */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* Leftover Food */}
+            <div className="p-4 rounded-xl bg-[#FFFDF7] border border-[#FDE68A]">
+              <span className="text-xs text-[#B45309] font-medium block mb-1">
+                Food Left Over
+              </span>
+              <p className="text-2xl font-mono font-bold text-[#B45309]">
+                {result.audit.estimatedFoodWastedGrams}g
+              </p>
+              <p className="text-xs text-[#92400E] mt-1">
+                {result.audit.leftoverPercentage}% of standard meal
+              </p>
+            </div>
+
+            {/* Food Consumed */}
+            <div className="p-4 rounded-xl bg-[#F0FDF4] border border-[#BBF7D0]">
+              <span className="text-xs text-[#166534] font-medium block mb-1">
+                Food Consumed
+              </span>
+              <p className="text-2xl font-mono font-bold text-[#166534]">
+                {result.audit.estimatedFoodConsumedGrams}g
+              </p>
+              <p className="text-xs text-[#15803D] mt-1">
+                {(100 - result.audit.leftoverPercentage)}% finished by diner
+              </p>
+            </div>
+
+            {/* Meal Portion Baseline */}
+            <div className="p-4 rounded-xl bg-[#F5F7F0] border border-[#D8E4D2]">
+              <span className="text-xs text-[#486340] font-medium block mb-1">
+                Standard Portion Size
+              </span>
+              <p className="text-2xl font-mono font-bold text-[#191C1A]">
+                {result.audit.standardMealWeightGrams}g
+              </p>
+              <p className="text-xs text-[#8E9789] mt-1">
+                Mess standard thali serving
+              </p>
+            </div>
+          </div>
+
+          {/* Environmental & Financial Impact Strip */}
+          <div className="p-4 bg-[#FAF8F5] border border-[#E0E8DA] rounded-xl">
+            <h4 className="text-xs font-semibold text-[#486340] uppercase tracking-wider mb-3">
+              Estimated Resource Footprint of Leftovers
+            </h4>
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div>
+                <div className="flex items-center justify-center gap-1 text-xs text-[#8E9789] mb-1">
+                  <Flame className="w-3.5 h-3.5 text-[#B45309]" />
+                  <span>Embodied CO₂e</span>
+                </div>
+                <p className="text-base sm:text-lg font-mono font-bold text-[#191C1A]">
+                  {result.audit.co2eEmittedKg} kg
+                </p>
+                <p className="text-[11px] text-[#8E9789] mt-0.5">IPCC factor</p>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-center gap-1 text-xs text-[#8E9789] mb-1">
+                  <Droplets className="w-3.5 h-3.5 text-[#0284C7]" />
+                  <span>Virtual Water</span>
+                </div>
+                <p className="text-base sm:text-lg font-mono font-bold text-[#191C1A]">
+                  {result.audit.virtualWaterWastedLiters} L
+                </p>
+                <p className="text-[11px] text-[#8E9789] mt-0.5">embedded irrigation</p>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-center gap-1 text-xs text-[#8E9789] mb-1">
+                  <IndianRupee className="w-3.5 h-3.5 text-[#166534]" />
+                  <span>Food Value</span>
+                </div>
+                <p className="text-base sm:text-lg font-mono font-bold text-[#191C1A]">
+                  ₹{result.audit.financialLossInr.toFixed(2)}
+                </p>
+                <p className="text-[11px] text-[#8E9789] mt-0.5">prep cost</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Behavioral Recommendation */}
+          <div className="p-3.5 rounded-xl bg-[#F0FDF4] border border-[#BBF7D0] flex items-start gap-2.5">
+            <CheckCircle2 className="w-4 h-4 text-[#166534] shrink-0 mt-0.5" />
+            <div>
+              <p className="text-xs font-semibold text-[#166534]">Diner Recommendation</p>
+              <p className="text-xs text-[#15803D] mt-0.5 leading-relaxed">
+                {result.recommendation}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Section D: Methodology & Session History Disclosures ────────── */}
+      <div className="bg-white border border-[#D8E4D2] rounded-2xl overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setShowMethodology(v => !v)}
+          className="w-full px-5 py-3.5 flex items-center justify-between text-left hover:bg-[#F9F7F2] transition"
+        >
+          <div className="flex items-center gap-2 text-xs font-semibold text-[#486340]">
+            <Info className="w-4 h-4" />
+            <span>Audit Methodology & Conversion Assumptions</span>
+          </div>
+          {showMethodology ? <ChevronUp className="w-4 h-4 text-[#8E9789]" /> : <ChevronDown className="w-4 h-4 text-[#8E9789]" />}
+        </button>
+
+        {showMethodology && (
+          <div className="px-5 pb-5 pt-1 space-y-4 border-t border-[#EDF0E9] text-xs text-[#6B7B68] leading-relaxed">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-3.5 rounded-xl bg-[#FAF8F5] border border-[#E0E8DA] space-y-1.5">
+                <p className="font-semibold text-[#191C1A]">Baseline Meal Parameters</p>
+                <p>• Standard Thali Serving: 380 grams (120g rice, 50g dal, 90g wheat roti, 100g vegetables, 20g oil).</p>
+                <p>• Meal Preparation Value: ₹85.00 per kilogram of prepared food.</p>
+                <p>• Clean Plate Baseline: Leftovers &lt;10% are considered negligible plate loss.</p>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-[#FAF8F5] border border-[#E0E8DA] space-y-1.5">
+                <p className="font-semibold text-[#191C1A]">Environmental Conversion Factors</p>
+                <p>• Greenhouse Gases: 2.5 kg CO₂e per kilogram of discarded food (composite agricultural index).</p>
+                <p>• Virtual Water: 1,200 Liters of water consumed per kg of mixed grain and legume preparation.</p>
+                <p>• Conscientiousness Credits: 10 to 50 Green Credits awarded to dining hall standings per logged audit.</p>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-[#8E9789]">
+              Disclaimer: This module provides decision-support estimates calibrated against benchmark mess dining trays. It does not replace certified laboratory waste calorimetry.
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Session Audit History (if any audits were run this session) */}
+      {historyList.length > 0 && (
+        <div className="bg-white border border-[#D8E4D2] rounded-2xl p-5 shadow-2xs">
+          <div className="flex items-center gap-2 mb-3">
+            <History className="w-4 h-4 text-[#486340]" />
+            <h3 className="text-sm font-semibold text-[#191C1A]">Recent Audits (This Session)</h3>
+          </div>
+          <div className="divide-y divide-[#EDF0E9]">
+            {historyList.map(item => (
+              <div key={item.id} className="py-2.5 flex items-center justify-between text-xs">
+                <div>
+                  <span className="font-medium text-[#191C1A]">{item.preset}</span>
+                  <span className="text-[#8E9789] ml-2">at {item.timestamp}</span>
+                </div>
+                <div className="flex items-center gap-3 font-mono">
+                  <span className="text-[#B45309]">{item.wastedGrams}g ({item.leftoverPct}%)</span>
+                  <span className="text-[#166534] font-semibold">+{item.creditsEarned} pts</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

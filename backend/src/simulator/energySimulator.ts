@@ -57,9 +57,12 @@ export interface AuditLogEntry {
   action: string;
   resolvedBy: string;
   department: string;
-  kwhPrevented: number;
+  kwhPrevented?: number;
+  foodSavedKg?: number;
   costSavedInr: number;
   creditsAwarded: number;
+  isSeeded?: boolean;
+  type?: 'ENERGY' | 'FOOD_AUDIT';
 }
 
 export interface HourlyEnergyPoint {
@@ -326,24 +329,28 @@ export class CampusEnergySimulator {
       timestamp: new Date(Date.now() - 3600000 * 2).toISOString(),
       blockId: 'main-blk-fl2-r204',
       blockName: 'Advanced AI & Computing Lab (Room 204)',
-      action: 'Automated NILM cutoff: 18 Workstations & Cassette AC left running',
-      resolvedBy: 'EcoPulse Guard (Auto-Relay)',
+      action: 'Simulated leak resolved: 18 workstations & cassette AC returned to idle baseline',
+      resolvedBy: 'EcoPulse Guard',
       department: 'Computer Science & Engg',
       kwhPrevented: 4.2,
       costSavedInr: 35.7,
-      creditsAwarded: 50
+      creditsAwarded: 50,
+      isSeeded: true,
+      type: 'ENERGY',
     },
     {
       id: 'log-002',
       timestamp: new Date(Date.now() - 3600000 * 4).toISOString(),
       blockId: 'mech-blk-fl1-r112',
       blockName: 'CAD/CAM Simulation Suite (Room 112)',
-      action: 'Student breaker trip override: Isolated idle CAD workstations',
+      action: 'Simulated leak resolved: Isolated idle CAD workstations',
       resolvedBy: 'Aman Patel (ME 3rd Yr)',
       department: 'Mechanical Engineering',
       kwhPrevented: 5.8,
       costSavedInr: 49.3,
-      creditsAwarded: 50
+      creditsAwarded: 50,
+      isSeeded: true,
+      type: 'ENERGY',
     }
   ];
 
@@ -386,16 +393,22 @@ export class CampusEnergySimulator {
       timestamp: new Date().toISOString(),
       blockId: block.id,
       blockName: block.name,
-      action: `Remote load cut-off applied. All idle loads isolated.`,
+      action: `Simulated leak resolved: Loads reset to baseline (${preventedKw.toFixed(2)} kW reduction).`,
       resolvedBy,
       department: block.department,
       kwhPrevented: Number(preventedKw.toFixed(2)),
       costSavedInr: costSaved,
-      creditsAwarded: 50
+      creditsAwarded: 50,
+      isSeeded: false,
+      type: 'ENERGY',
     };
 
     this.auditLogs.unshift(newLog);
     return { success: true, log: newLog };
+  }
+
+  public addAuditLog(entry: AuditLogEntry): void {
+    this.auditLogs.unshift(entry);
   }
 
   public triggerDemoLeak(blockId: string = 'main-blk-fl2-r204'): boolean {

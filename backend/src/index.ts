@@ -17,17 +17,15 @@ interface DepartmentScore {
   code: string;
   greenCredits: number;
   kwhSaved: number;
-  foodSavedKg: number;
-  streakDays: number;
-  activeWarriors: number;
+  auditsCompleted: number;
 }
 
 let departmentLeaderboard: DepartmentScore[] = [
-  { rank: 1, department: 'Computer Science & Engg (Main Block)', code: 'CSE', greenCredits: 4420, kwhSaved: 365, foodSavedKg: 84.5, streakDays: 14, activeWarriors: 142 },
-  { rank: 2, department: 'Mechanical Engineering (Mech Block)', code: 'ME', greenCredits: 3980, kwhSaved: 310, foodSavedKg: 71.0, streakDays: 9, activeWarriors: 98 },
-  { rank: 3, department: 'Management Studies (MBA Block)', code: 'MBA', greenCredits: 3450, kwhSaved: 245, foodSavedKg: 62.0, streakDays: 7, activeWarriors: 75 },
-  { rank: 4, department: 'Information Technology (Main Block)', code: 'IT', greenCredits: 2980, kwhSaved: 195, foodSavedKg: 46.8, streakDays: 5, activeWarriors: 58 },
-  { rank: 5, department: 'Central Hostel Dining Council', code: 'HOSTEL', greenCredits: 2710, kwhSaved: 170, foodSavedKg: 40.2, streakDays: 4, activeWarriors: 52 },
+  { rank: 1, department: 'Computer Science & Engg (Main Block)', code: 'CSE', greenCredits: 4420, kwhSaved: 365, auditsCompleted: 28 },
+  { rank: 2, department: 'Mechanical Engineering (Mech Block)', code: 'ME', greenCredits: 3980, kwhSaved: 310, auditsCompleted: 22 },
+  { rank: 3, department: 'Management Studies (MBA Block)', code: 'MBA', greenCredits: 3450, kwhSaved: 245, auditsCompleted: 19 },
+  { rank: 4, department: 'Information Technology (Main Block)', code: 'IT', greenCredits: 2980, kwhSaved: 195, auditsCompleted: 14 },
+  { rank: 5, department: 'Central Hostel Dining Council', code: 'HOSTEL', greenCredits: 2710, kwhSaved: 170, auditsCompleted: 35 },
 ];
 
 // 1. Campus Status & NILM Telemetry
@@ -44,27 +42,32 @@ app.get('/api/campus-status', (_req, res) => {
   });
 });
 
-// 2. Resolve Leak Endpoint (Remote load cut-off)
+// 2. Resolve Leak Endpoint (Remote load cut-off simulation)
 app.post('/api/resolve-leak', (req, res) => {
-  const { blockId, userDept = 'Computer Science & Engg' } = req.body;
+  const { blockId } = req.body;
   if (!blockId) {
     res.status(400).json({ error: 'blockId is required' });
     return;
   }
   const result = simulator.resolveLeak(blockId);
-  if (result.success) {
-    // Award 50 credits to the department
-    const dept = departmentLeaderboard.find((d) => d.department === userDept);
+  if (result.success && result.log) {
+    // Correctly attribute credits to the block's actual department
+    const blockDept = result.log.department.toLowerCase();
+    const dept = departmentLeaderboard.find((d) => 
+      d.department.toLowerCase().includes(blockDept) ||
+      blockDept.includes(d.code.toLowerCase())
+    ) || departmentLeaderboard[0];
+
     if (dept) {
       dept.greenCredits += 50;
-      dept.kwhSaved += result.log?.kwhPrevented || 3;
+      dept.kwhSaved += Math.round(result.log.kwhPrevented || 4);
       departmentLeaderboard.sort((a, b) => b.greenCredits - a.greenCredits);
       departmentLeaderboard.forEach((d, idx) => (d.rank = idx + 1));
     }
   }
   res.json({
     success: result.success,
-    message: result.success ? 'NILM Ghost load isolated & load dropped to baseline.' : 'Leak not found or already resolved.',
+    message: result.success ? 'Simulated leak resolved & load returned to baseline.' : 'Leak not found or already resolved.',
     log: result.log,
   });
 });
@@ -147,24 +150,21 @@ app.get('/api/mess-forecast', (req, res) => {
     costSavedInr,
     co2eSavedKg,
     waterSavedLiters,
-    confidenceIntervalPct: 94.8,
     bom,
   });
 });
 
-// 8. Deep Tech Computer Vision Food Waste Volumetric & GHG Analyzer
+// 8. Food Waste Audit (Calibrated Plate Preset & Inspection Simulation)
 app.post('/api/scan-plate', (req, res) => {
-  const { imageBase64, isWebcam = false, simulatedPlateType = 'NORMAL_TRAY' } = req.body;
+  const { imageBase64, isWebcam = false, simulatedPlateType = 'NORMAL_TRAY', department = 'Central Hostel Dining Council' } = req.body;
 
   // Real Camera Image Validation:
-  // If user turned on camera, analyze the captured image
+  // If user turned on camera, verify frame has illumination and content
   if (isWebcam && imageBase64) {
-    // Decode base64 buffer sample to analyze pixel variance and color composition
     try {
       const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
       const buffer = Buffer.from(base64Data, 'base64');
       
-      // If image is very small or corrupted
       if (buffer.length < 5000) {
         res.status(400).json({
           status: 'error',
@@ -173,7 +173,6 @@ app.post('/api/scan-plate', (req, res) => {
         return;
       }
 
-      // Sample bytes to calculate warm chroma (food hues) vs cool/dark indoor background
       let warmFoodBytes = 0;
       let coolRoomBytes = 0;
       const step = Math.max(1, Math.floor(buffer.length / 5000));
@@ -182,7 +181,6 @@ app.post('/api/scan-plate', (req, res) => {
         const g = buffer[i + 1] || 0;
         const b = buffer[i + 2] || 0;
         
-        // Food tones (grains, pulses, gravies, rotis) typically have warm chromaticity (R > B + 20 and G > B)
         if (r > b + 25 && g > b) {
           warmFoodBytes++;
         } else if (b > r + 15 || (r < 60 && g < 60 && b < 60)) {
@@ -192,13 +190,11 @@ app.post('/api/scan-plate', (req, res) => {
 
       const warmFoodRatio = warmFoodBytes / (warmFoodBytes + coolRoomBytes + 1);
 
-      // If the camera is pointed at computer screens, dark room, or keyboard with no food tones
       if (warmFoodRatio < 0.22) {
         res.json({
           status: 'error',
-          error: 'No food plate or dining tray detected in camera viewfinder! (Point camera at food tray or use calibrated preset)',
-          detectionConfidence: Number((warmFoodRatio * 1.5).toFixed(2)),
-          recommendation: 'Please place a dining tray or food plate within the viewfinder frame.',
+          error: 'No food plate detected in frame. Point camera at food tray or use calibrated preset.',
+          recommendation: 'Place a dining tray or food plate within the camera view.',
         });
         return;
       }
@@ -207,81 +203,97 @@ app.post('/api/scan-plate', (req, res) => {
     }
   }
 
-  // Deep Tech Volumetric Heuristic Model (Simulating Edge OpenCV Contour Area & Depth)
+  // Calibrated Plate Preset Estimation
   let leftoverPct: number;
   let foodCategory: string;
 
   if (simulatedPlateType === 'HEAVY_WASTE') {
-    leftoverPct = Math.floor(Math.random() * 12) + 38; // 38% - 50%
-    foodCategory = 'Rice + Dal + Bread remnants';
+    leftoverPct = 42; // ~42% leftover
+    foodCategory = 'Rice + Dal + Roti remnants';
   } else if (simulatedPlateType === 'CLEAN_TRAY') {
-    leftoverPct = Math.floor(Math.random() * 5) + 3; // 3% - 8% (Zero Waste hero)
-    foodCategory = 'Negligible crust remnants';
+    leftoverPct = 5; // ~5% leftover (minimal remnants)
+    foodCategory = 'Negligible remnants';
   } else {
-    leftoverPct = Math.floor(Math.random() * 15) + 18; // 18% - 33%
-    foodCategory = 'Carb (Rice) + Gravy surplus';
+    leftoverPct = 24; // ~24% leftover
+    foodCategory = 'Rice portion + Gravy surplus';
   }
 
   const standardMealWeightGrams = 380.0;
   const wastedGrams = Number(((leftoverPct / 100.0) * standardMealWeightGrams).toFixed(1));
-  const co2eEmittedKg = Number(((wastedGrams / 1000.0) * 2.5).toFixed(3)); // IPCC 2.5 kg CO2e / kg food
-  const methaneEquivalentGrams = Number((wastedGrams * 0.045).toFixed(2));
-  const virtualWaterWastedLiters = Math.round((wastedGrams / 1000.0) * 1200);
-  const financialLossInr = Number(((wastedGrams / 1000.0) * 85.0).toFixed(2));
+  const consumedGrams = Number((standardMealWeightGrams - wastedGrams).toFixed(1));
+  const co2eEmittedKg = Number(((wastedGrams / 1000.0) * 2.5).toFixed(2)); // IPCC standard 2.5 kg CO2e / kg food waste
+  const virtualWaterWastedLiters = Math.round((wastedGrams / 1000.0) * 1200); // ~1,200 L / kg grain/pulse mix
+  const financialLossInr = Number(((wastedGrams / 1000.0) * 85.0).toFixed(2)); // Estimated ₹85/kg preparation cost
 
-  // Dynamic Gamification Algorithm
+  // Conscientiousness Credits
   let greenCreditsEarned = 10;
-  let statusBadge = 'Needs Improvement';
-  let badgeColor = 'text-amber-400';
+  let statusBadge = 'High Leftover Alert';
+  let badgeColor = 'amber';
 
   if (leftoverPct <= 10) {
-    greenCreditsEarned = 60;
-    statusBadge = '🌟 Zero-Waste Green Champion (+60 pts)';
-    badgeColor = 'text-emerald-400';
-  } else if (leftoverPct <= 22) {
-    greenCreditsEarned = 35;
-    statusBadge = '🌿 Moderate Portion Conscientious (+35 pts)';
-    badgeColor = 'text-sky-400';
+    greenCreditsEarned = 50;
+    statusBadge = 'Zero-Waste Achiever (+50 pts)';
+    badgeColor = 'green';
+  } else if (leftoverPct <= 25) {
+    greenCreditsEarned = 25;
+    statusBadge = 'Moderate Leftovers (+25 pts)';
+    badgeColor = 'sky';
   } else {
     greenCreditsEarned = 10;
-    statusBadge = '⚠️ High Leftover Waste Alert (+10 pts)';
-    badgeColor = 'text-rose-400';
+    statusBadge = 'High Leftover Alert (+10 pts)';
+    badgeColor = 'amber';
   }
 
-  // Update top leaderboard department on successful scan
-  const topDept = departmentLeaderboard[0];
-  if (topDept) {
-    topDept.greenCredits += greenCreditsEarned;
-    topDept.foodSavedKg += Number(((standardMealWeightGrams - wastedGrams) / 1000).toFixed(2));
+  // Attribute credits to the relevant department (Hostel Council or user dept)
+  const targetDept = departmentLeaderboard.find((d) =>
+    d.department.toLowerCase().includes(department.toLowerCase()) ||
+    d.code.toLowerCase() === department.toLowerCase()
+  ) || departmentLeaderboard.find((d) => d.code === 'HOSTEL') || departmentLeaderboard[0];
+
+  if (targetDept) {
+    targetDept.greenCredits += greenCreditsEarned;
+    targetDept.auditsCompleted = (targetDept.auditsCompleted || 0) + 1;
+    departmentLeaderboard.sort((a, b) => b.greenCredits - a.greenCredits);
+    departmentLeaderboard.forEach((d, idx) => (d.rank = idx + 1));
   }
+
+  // Record audit log for verifiable activity ledger
+  simulator.addAuditLog({
+    id: `audit-${Date.now()}`,
+    timestamp: new Date().toISOString(),
+    blockId: 'central-hostel-mess',
+    blockName: 'Central Hostel Dining Hall',
+    action: `Plate audit logged: ${wastedGrams}g leftover (${leftoverPct}% of ${standardMealWeightGrams}g meal).`,
+    resolvedBy: 'Plate Waste Audit User',
+    department: targetDept.department.split(' (')[0],
+    costSavedInr: financialLossInr,
+    creditsAwarded: greenCreditsEarned,
+    isSeeded: false,
+    type: 'FOOD_AUDIT',
+  });
 
   res.json({
     status: 'success',
     timestamp: new Date().toISOString(),
-    visionMetrics: {
-      plateSurfaceAreaMm2: 78500, // Normalized 35x25cm tray
-      segmentedFoodAreaMm2: Math.round(78500 * (leftoverPct / 100)),
-      estimatedFoodVolumeCm3: Math.round(wastedGrams * 1.15), // Average food density ~0.87 g/cm3
-      foodRemnantClass: foodCategory,
-      detectionConfidence: 0.942,
-    },
     audit: {
       leftoverPercentage: leftoverPct,
       estimatedFoodWastedGrams: wastedGrams,
+      estimatedFoodConsumedGrams: consumedGrams,
+      standardMealWeightGrams,
       co2eEmittedKg,
-      methaneEquivalentGrams,
       virtualWaterWastedLiters,
       financialLossInr,
       greenCreditsEarned,
       statusBadge,
       badgeColor,
+      foodRemnantClass: foodCategory,
     },
     recommendation:
       leftoverPct <= 10
-        ? 'Outstanding effort! Your plate clean index qualifies for SVVV Green Honour Roll.'
+        ? 'Excellent plate clearance. Remnants are well within baseline tolerance.'
         : leftoverPct <= 25
-        ? 'Noticeable carb waste. Request mess staff for 1 less roti or half rice cup next meal.'
-        : 'Critical waste! More than 100g of nutrient-rich food discarded. Please take smaller initial servings.',
+        ? 'Noticeable leftovers. Request a smaller rice or roti serving if not finishing portions.'
+        : 'Substantial leftovers (>150g). Consider requesting half-portions at the counter to minimize waste.',
   });
 });
 

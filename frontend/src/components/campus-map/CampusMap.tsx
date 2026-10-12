@@ -127,19 +127,19 @@ const DetailPanel: React.FC<DetailPanelProps> = ({ block, onClose, onResolveLeak
             <h4 className="text-xs font-semibold text-[#486340] uppercase tracking-wider">Power Readings</h4>
             <div className="grid grid-cols-3 gap-3 text-center">
               <div>
-                <p className="text-[10px] text-[#8E9789] uppercase tracking-wide mb-0.5">Current</p>
+                <p className="text-xs text-[#8E9789] uppercase tracking-wide mb-0.5">Current</p>
                 <p className={`text-lg font-mono font-bold ${block.hasGhostLeak ? 'text-[#B45309]' : 'text-[#191C1A]'}`}>
                   {kw(block.activePowerWatts)}<span className="text-xs font-normal ml-0.5">kW</span>
                 </p>
               </div>
               <div>
-                <p className="text-[10px] text-[#8E9789] uppercase tracking-wide mb-0.5">Baseline</p>
+                <p className="text-xs text-[#8E9789] uppercase tracking-wide mb-0.5">Baseline</p>
                 <p className="text-lg font-mono font-bold text-[#191C1A]">
                   {kw(block.baselineIdleWatts)}<span className="text-xs font-normal ml-0.5">kW</span>
                 </p>
               </div>
               <div>
-                <p className="text-[10px] text-[#8E9789] uppercase tracking-wide mb-0.5">Excess</p>
+                <p className="text-xs text-[#8E9789] uppercase tracking-wide mb-0.5">Excess</p>
                 <p className={`text-lg font-mono font-bold ${diffWatts > 0 ? 'text-[#B45309]' : 'text-[#166534]'}`}>
                   {diffWatts > 0 ? '+' : ''}{diffKw}<span className="text-xs font-normal ml-0.5">kW</span>
                 </p>
@@ -157,11 +157,11 @@ const DetailPanel: React.FC<DetailPanelProps> = ({ block, onClose, onResolveLeak
               <p className="text-sm text-[#92400E] leading-relaxed mb-3">
                 {block.leakDescription}
               </p>
-              <div className="flex items-center justify-between pt-3 border-t border-[#FDE68A] text-xs text-[#B45309] font-mono">
+              <div className="flex items-center justify-between pt-3 border-t border-[#FDE68A] text-sm text-[#B45309] font-mono">
                 <span>Est. cost: <strong>₹{block.wastedCostPerHourInr.toFixed(2)}/hour</strong></span>
                 <span>{block.wastedCo2KgPerHour.toFixed(2)} kg CO₂/hr</span>
               </div>
-              <p className="text-[11px] text-[#D97706] mt-1.5">
+              <p className="text-xs text-[#D97706] mt-1.5">
                 Based on ₹8.50/kWh tariff. Estimated only — this is a simulation.
               </p>
             </div>
@@ -362,10 +362,10 @@ const BuildingRow: React.FC<BuildingRowProps> = ({ block, isSelected, onClick })
 
     {/* Power readings */}
     <div className="hidden sm:flex flex-col items-end shrink-0 text-right">
-      <span className={`text-sm font-mono font-bold ${block.hasGhostLeak ? 'text-[#B45309]' : 'text-[#191C1A]'}`}>
+      <span className={`text-base font-mono font-bold ${block.hasGhostLeak ? 'text-[#B45309]' : 'text-[#191C1A]'}`}>
         {kw(block.activePowerWatts)} kW
       </span>
-      <span className="text-[11px] text-[#8E9789] font-mono">base {kw(block.baselineIdleWatts)} kW</span>
+      <span className="text-xs text-[#8E9789] font-mono">base {kw(block.baselineIdleWatts)} kW</span>
     </div>
 
     {/* Status badge */}
@@ -446,7 +446,7 @@ export const CampusMap: React.FC<CampusMapProps> = ({
           <p className="text-xl sm:text-2xl font-mono font-bold text-[#191C1A]">
             {(totalActiveWatts / 1000).toFixed(2)}<span className="text-sm font-normal ml-1 text-[#8E9789]">kW</span>
           </p>
-          <p className="text-[11px] text-[#8E9789] mt-0.5">campus-wide</p>
+          <p className="text-xs text-[#8E9789] mt-0.5">campus-wide</p>
         </div>
 
         {/* 2 — Active Energy Leaks */}
@@ -465,7 +465,7 @@ export const CampusMap: React.FC<CampusMapProps> = ({
             {activeGhostLeaksCount}
             <span className="text-sm font-normal ml-1 text-[#8E9789]">building{activeGhostLeaksCount !== 1 ? 's' : ''}</span>
           </p>
-          <p className="text-[11px] text-[#8E9789] mt-0.5">simulated</p>
+          <p className="text-xs text-[#8E9789] mt-0.5">simulated</p>
         </div>
 
         {/* 3 — System Status */}
@@ -561,7 +561,7 @@ export const CampusMap: React.FC<CampusMapProps> = ({
               <Activity className="w-4 h-4 text-[#486340]" />
               <h3 className="text-sm font-semibold text-[#191C1A]">24-Hour Consumption Profile</h3>
             </div>
-            <p className="text-xs text-[#8E9789]">
+            <p className="text-sm text-[#8E9789]">
               Simulated campus energy consumption over the past 24 hours.
             </p>
           </div>
