@@ -4,6 +4,7 @@ import {
   IndianRupee, Leaf, Droplets, CheckCircle, PackageCheck, AlertCircle,
   Sparkles, ChefHat
 } from 'lucide-react';
+import { API_ENDPOINTS } from '../../config/api';
 
 interface BomBreakdown {
   grainRiceKg: number;
@@ -39,7 +40,7 @@ export const MessPredictor: React.FC = () => {
   const fetchForecast = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/mess-forecast?day=${day}&weather=${weather}&isExam=${isExam}`);
+      const res = await fetch(API_ENDPOINTS.messForecast(`?day=${day}&weather=${weather}&isExam=${isExam}`));
       const data: MessForecastData = await res.json();
       setForecast(data);
     } catch (err) {

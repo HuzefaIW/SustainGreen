@@ -1,6 +1,7 @@
 /**
- * Deep Tech NILM (Non-Intrusive Load Monitoring) & Campus IoT Energy Telemetry Simulator
- * Simulates high-frequency smart-meter streams, Bayesian virtual occupancy, and ghost leak detection.
+ * Deep Tech NILM & Campus Energy Telemetry Simulator
+ * Structured for the 3 College Blocks (Main Block, Mechanical Engg Block, MBA Block)
+ * with Floors 1, 2, 3 (Rooms 101 - 126 per floor) and Central Hostel Mess.
  */
 
 export interface ApplianceLoad {
@@ -16,15 +17,19 @@ export interface CampusBlock {
   id: string;
   code: string;
   name: string;
+  
+  building: 'Main Block' | 'Mechanical Engg Block' | 'MBA Block' | 'Central Facilities';
+  floor: 1 | 2 | 3;
+  roomNumber: string;
   department: string;
-  category: 'LAB' | 'CLASSROOM' | 'LIBRARY' | 'MESS';
+  category: 'LAB' | 'CLASSROOM' | 'SEMINAR' | 'MESS';
   capacity: number;
   
   // Virtual Occupancy (Zero-Hardware Sensor Fusion)
   wiFiClientCount: number;
   scheduledClass: string | null;
   isOccupied: boolean;
-  occupancyConfidence: number; // 0.0 to 1.0 (Bayesian filter)
+  occupancyConfidence: number;
 
   // NILM High-Frequency Telemetry
   voltageRms: number;
@@ -35,7 +40,7 @@ export interface CampusBlock {
   
   // Ghost Leak Anomaly Detection
   hasGhostLeak: boolean;
-  ghostLeakSeverity: number; // 0.0 to 1.0
+  ghostLeakSeverity: number;
   leakDescription: string | null;
   wastedCostPerHourInr: number;
   wastedCo2KgPerHour: number;
@@ -66,10 +71,14 @@ export interface HourlyEnergyPoint {
 
 export class CampusEnergySimulator {
   private blocks: CampusBlock[] = [
+    // --- MAIN BLOCK (Engineering & CSE/IT) ---
     {
-      id: 'svvv-blk-a-cs-lab-2',
-      code: 'CS-LAB-02',
-      name: 'Advanced Computing Lab 2 (Block A)',
+      id: 'main-blk-fl2-r204',
+      code: 'MB-204',
+      name: 'Advanced AI & Computing Lab (Room 204)',
+      building: 'Main Block',
+      floor: 2,
+      roomNumber: '204',
       department: 'Computer Science & Engg',
       category: 'LAB',
       capacity: 45,
@@ -85,23 +94,26 @@ export class CampusEnergySimulator {
       hasGhostLeak: true,
       ghostLeakSeverity: 0.88,
       leakDescription: '18 Core-i7 Workstations & 2.0-Ton Cassette AC active with 0 students detected',
-      wastedCostPerHourInr: 21.44, // ₹8.5 / kWh * 2.54 kW
-      wastedCo2KgPerHour: 2.08,    // 0.82 kg CO2 / kWh
+      wastedCostPerHourInr: 21.44,
+      wastedCo2KgPerHour: 2.08,
       appliances: [
-        { id: 'app-ac-1', name: 'Voltas 2.0T Split AC', type: 'HVAC', ratedWatts: 1850, reactiveVar: 620, status: 'ACTIVE' },
-        { id: 'app-pc-bank', name: 'Workstations Cluster (18 PCs)', type: 'COMPUTING', ratedWatts: 690, reactiveVar: 180, status: 'ACTIVE' },
-        { id: 'app-lights', name: 'Ceiling LED Fixtures (8x)', type: 'LIGHTING', ratedWatts: 140, reactiveVar: 40, status: 'ACTIVE' }
+        { id: 'mb-ac-1', name: 'Voltas 2.0T Cassette AC', type: 'HVAC', ratedWatts: 1850, reactiveVar: 620, status: 'ACTIVE' },
+        { id: 'mb-pc-cluster', name: 'Core-i7 Desktop Bank (18 PCs)', type: 'COMPUTING', ratedWatts: 690, reactiveVar: 180, status: 'ACTIVE' },
+        { id: 'mb-lights', name: 'LED Ceiling Panel Fixtures', type: 'LIGHTING', ratedWatts: 140, reactiveVar: 40, status: 'ACTIVE' }
       ]
     },
     {
-      id: 'svvv-blk-b-lh-101',
-      code: 'LH-101',
-      name: 'Auditorium Lecture Hall 101 (Block B)',
+      id: 'main-blk-fl1-r108',
+      code: 'MB-108',
+      name: 'Auditorium Lecture Hall 108',
+      building: 'Main Block',
+      floor: 1,
+      roomNumber: '108',
       department: 'Computer Science & Engg',
       category: 'CLASSROOM',
       capacity: 80,
       wiFiClientCount: 68,
-      scheduledClass: 'CS-402: Cloud Computing & Distributed Systems',
+      scheduledClass: 'CS-402: Cloud Architecture & Systems',
       isOccupied: true,
       occupancyConfidence: 0.98,
       voltageRms: 229.8,
@@ -115,19 +127,54 @@ export class CampusEnergySimulator {
       wastedCostPerHourInr: 0,
       wastedCo2KgPerHour: 0,
       appliances: [
-        { id: 'app-proj-1', name: 'Epson High-Lumen Projector', type: 'MULTIMEDIA', ratedWatts: 320, reactiveVar: 50, status: 'ACTIVE' },
-        { id: 'app-fan-lights', name: 'Fans & Ambient Tube Fixtures', type: 'LIGHTING', ratedWatts: 580, reactiveVar: 110, status: 'ACTIVE' },
-        { id: 'app-podium', name: 'Smart Podium & Mic System', type: 'COMPUTING', ratedWatts: 450, reactiveVar: 150, status: 'ACTIVE' }
+        { id: 'mb-proj', name: 'Epson High-Lumen Projector', type: 'MULTIMEDIA', ratedWatts: 320, reactiveVar: 50, status: 'ACTIVE' },
+        { id: 'mb-fans', name: 'High-Efficiency Fan Bank', type: 'LIGHTING', ratedWatts: 580, reactiveVar: 110, status: 'ACTIVE' },
+        { id: 'mb-podium', name: 'Smart Digital Podium', type: 'COMPUTING', ratedWatts: 450, reactiveVar: 150, status: 'ACTIVE' }
       ]
     },
     {
-      id: 'svvv-blk-mech-cad',
-      code: 'ME-CAD-01',
-      name: 'Mechanical CAD/CAM Simulation Suite',
+      id: 'main-blk-fl3-r315',
+      code: 'MB-315',
+      name: 'Data Science & Analytics Lab (Room 315)',
+      building: 'Main Block',
+      floor: 3,
+      roomNumber: '315',
+      department: 'Information Technology',
+      category: 'LAB',
+      capacity: 40,
+      wiFiClientCount: 34,
+      scheduledClass: 'IT-304: Big Data Frameworks',
+      isOccupied: true,
+      occupancyConfidence: 0.94,
+      voltageRms: 230.1,
+      activePowerWatts: 1820,
+      reactivePowerVar: 460,
+      powerFactor: 0.96,
+      baselineIdleWatts: 150,
+      hasGhostLeak: false,
+      ghostLeakSeverity: 0.0,
+      leakDescription: null,
+      wastedCostPerHourInr: 0,
+      wastedCo2KgPerHour: 0,
+      appliances: [
+        { id: 'mb-ds-workstations', name: 'Analytics Terminals (24x)', type: 'COMPUTING', ratedWatts: 1200, reactiveVar: 300, status: 'ACTIVE' },
+        { id: 'mb-ds-ac', name: 'Split AC 1.5T', type: 'HVAC', ratedWatts: 480, reactiveVar: 120, status: 'ACTIVE' },
+        { id: 'mb-ds-lights', name: 'Diffused Lighting', type: 'LIGHTING', ratedWatts: 140, reactiveVar: 40, status: 'ACTIVE' }
+      ]
+    },
+
+    // --- MECHANICAL ENGG BLOCK ---
+    {
+      id: 'mech-blk-fl1-r112',
+      code: 'ME-112',
+      name: 'CAD/CAM Simulation Suite (Room 112)',
+      building: 'Mechanical Engg Block',
+      floor: 1,
+      roomNumber: '112',
       department: 'Mechanical Engineering',
       category: 'LAB',
       capacity: 35,
-      wiFiClientCount: 1, // Single stray device / cleaner
+      wiFiClientCount: 1,
       scheduledClass: null,
       isOccupied: false,
       occupancyConfidence: 0.91,
@@ -142,63 +189,133 @@ export class CampusEnergySimulator {
       wastedCostPerHourInr: 15.3,
       wastedCo2KgPerHour: 1.48,
       appliances: [
-        { id: 'app-mech-workstations', name: 'NVIDIA RTX Workstations (8x)', type: 'COMPUTING', ratedWatts: 1420, reactiveVar: 380, status: 'ACTIVE' },
-        { id: 'app-mech-exhaust', name: 'Thermal Exhaust Blowers', type: 'HVAC', ratedWatts: 380, reactiveVar: 110, status: 'ACTIVE' },
-        { id: 'app-mech-lights', name: 'High-Bay Lighting', type: 'LIGHTING', ratedWatts: 180, reactiveVar: 30, status: 'ACTIVE' }
+        { id: 'me-gpu', name: 'NVIDIA RTX CAD Render Nodes (8x)', type: 'COMPUTING', ratedWatts: 1420, reactiveVar: 380, status: 'ACTIVE' },
+        { id: 'me-blowers', name: 'Thermal Exhaust Blowers', type: 'HVAC', ratedWatts: 380, reactiveVar: 110, status: 'ACTIVE' },
+        { id: 'me-lights', name: 'Industrial High-Bay Lights', type: 'LIGHTING', ratedWatts: 180, reactiveVar: 30, status: 'ACTIVE' }
       ]
     },
     {
-      id: 'svvv-blk-c-library',
-      code: 'LIB-CENTRAL',
-      name: 'Central University Library (Silent Reading Hall)',
-      department: 'Central Campus Facilities',
-      category: 'LIBRARY',
-      capacity: 150,
-      wiFiClientCount: 94,
-      scheduledClass: 'Open Reading Hours (08:00 - 20:00)',
+      id: 'mech-blk-fl2-r218',
+      code: 'ME-218',
+      name: 'Robotics & Automation Suite (Room 218)',
+      building: 'Mechanical Engg Block',
+      floor: 2,
+      roomNumber: '218',
+      department: 'Mechanical Engineering',
+      category: 'LAB',
+      capacity: 30,
+      wiFiClientCount: 22,
+      scheduledClass: 'ME-405: Mechatronics & PLC',
+      isOccupied: true,
+      occupancyConfidence: 0.95,
+      voltageRms: 230.8,
+      activePowerWatts: 1620,
+      reactivePowerVar: 410,
+      powerFactor: 0.97,
+      baselineIdleWatts: 160,
+      hasGhostLeak: false,
+      ghostLeakSeverity: 0.0,
+      leakDescription: null,
+      wastedCostPerHourInr: 0,
+      wastedCo2KgPerHour: 0,
+      appliances: [
+        { id: 'me-plc', name: 'PLC Robotic Trainer Arms', type: 'COMPUTING', ratedWatts: 920, reactiveVar: 240, status: 'ACTIVE' },
+        { id: 'me-pneumatic', name: 'Mini-Compressor Air Unit', type: 'HVAC', ratedWatts: 520, reactiveVar: 130, status: 'ACTIVE' },
+        { id: 'me-bench', name: 'Worktable Task Lamps', type: 'LIGHTING', ratedWatts: 180, reactiveVar: 40, status: 'ACTIVE' }
+      ]
+    },
+
+    // --- MBA BLOCK (Management Studies) ---
+    {
+      id: 'mba-blk-fl3-r305',
+      code: 'MBA-305',
+      name: 'Executive Seminar Hall (Room 305)',
+      building: 'MBA Block',
+      floor: 3,
+      roomNumber: '305',
+      department: 'Management Studies (MBA)',
+      category: 'SEMINAR',
+      capacity: 60,
+      wiFiClientCount: 0,
+      scheduledClass: null,
+      isOccupied: false,
+      occupancyConfidence: 0.97,
+      voltageRms: 231.0,
+      activePowerWatts: 2450,
+      reactivePowerVar: 710,
+      powerFactor: 0.95,
+      baselineIdleWatts: 120,
+      hasGhostLeak: true,
+      ghostLeakSeverity: 0.85,
+      leakDescription: 'Central Chiller Duct & Stage Spotlights running in empty seminar hall',
+      wastedCostPerHourInr: 19.8,
+      wastedCo2KgPerHour: 1.91,
+      appliances: [
+        { id: 'mba-chiller', name: 'Duct Chiller Air Conditioner', type: 'HVAC', ratedWatts: 1950, reactiveVar: 580, status: 'ACTIVE' },
+        { id: 'mba-spots', name: 'Stage Spotlights & Stage Audio', type: 'LIGHTING', ratedWatts: 380, reactiveVar: 90, status: 'ACTIVE' },
+        { id: 'mba-podium', name: 'Executive Presentation Console', type: 'MULTIMEDIA', ratedWatts: 120, reactiveVar: 40, status: 'ACTIVE' }
+      ]
+    },
+    {
+      id: 'mba-blk-fl1-r102',
+      code: 'MBA-102',
+      name: 'Case Study Interactive Theater (Room 102)',
+      building: 'MBA Block',
+      floor: 1,
+      roomNumber: '102',
+      department: 'Management Studies (MBA)',
+      category: 'CLASSROOM',
+      capacity: 70,
+      wiFiClientCount: 58,
+      scheduledClass: 'MBA-201: Strategic Financial Decisions',
       isOccupied: true,
       occupancyConfidence: 0.99,
-      voltageRms: 230.5,
-      activePowerWatts: 3450,
-      reactivePowerVar: 910,
-      powerFactor: 0.96,
-      baselineIdleWatts: 420,
+      voltageRms: 229.5,
+      activePowerWatts: 1150,
+      reactivePowerVar: 280,
+      powerFactor: 0.97,
+      baselineIdleWatts: 110,
       hasGhostLeak: false,
       ghostLeakSeverity: 0.0,
       leakDescription: null,
       wastedCostPerHourInr: 0,
       wastedCo2KgPerHour: 0,
       appliances: [
-        { id: 'app-lib-ac-central', name: 'Central Chiller Duct Unit', type: 'HVAC', ratedWatts: 2400, reactiveVar: 680, status: 'ACTIVE' },
-        { id: 'app-lib-lights', name: 'Stack Illumination & Desk Lamps', type: 'LIGHTING', ratedWatts: 630, reactiveVar: 130, status: 'ACTIVE' },
-        { id: 'app-lib-kiosk', name: 'RFID Book Return Terminals', type: 'COMPUTING', ratedWatts: 420, reactiveVar: 100, status: 'ACTIVE' }
+        { id: 'mba-proj-1', name: 'Laser Projector Unit', type: 'MULTIMEDIA', ratedWatts: 280, reactiveVar: 40, status: 'ACTIVE' },
+        { id: 'mba-ac-inv', name: 'Inverter Split AC (Low Load)', type: 'HVAC', ratedWatts: 680, reactiveVar: 180, status: 'ACTIVE' },
+        { id: 'mba-lights-c', name: 'Classroom LED Arrays', type: 'LIGHTING', ratedWatts: 190, reactiveVar: 60, status: 'ACTIVE' }
       ]
     },
+
+    // --- CENTRAL HOSTEL MESS & DINING HALL ---
     {
-      id: 'svvv-blk-mess-hall',
-      code: 'MESS-HOSTEL-1',
-      name: 'Hostel Dining Hall & Central Kitchen',
+      id: 'central-hostel-mess',
+      code: 'MESS-CENTRAL',
+      name: 'Central Hostel Mess & Food Preparation Hall',
+      building: 'Central Facilities',
+      floor: 1,
+      roomNumber: '101',
       department: 'Hostel Administration',
       category: 'MESS',
-      capacity: 300,
-      wiFiClientCount: 38,
-      scheduledClass: 'Lunch Prep Cycle',
+      capacity: 350,
+      wiFiClientCount: 42,
+      scheduledClass: 'Central Kitchen & Dining Cycle',
       isOccupied: true,
-      occupancyConfidence: 0.88,
+      occupancyConfidence: 0.92,
       voltageRms: 228.9,
-      activePowerWatts: 4120,
-      reactivePowerVar: 1150,
+      activePowerWatts: 3850,
+      reactivePowerVar: 980,
       powerFactor: 0.96,
-      baselineIdleWatts: 500,
+      baselineIdleWatts: 480,
       hasGhostLeak: false,
       ghostLeakSeverity: 0.0,
       leakDescription: null,
       wastedCostPerHourInr: 0,
       wastedCo2KgPerHour: 0,
       appliances: [
-        { id: 'app-mess-coldstorage', name: 'Walk-in Cold Storage Compressor', type: 'HVAC', ratedWatts: 2200, reactiveVar: 640, status: 'ACTIVE' },
-        { id: 'app-mess-exhaust', name: 'Commercial Chimney Hood Blowers', type: 'HVAC', ratedWatts: 1420, reactiveVar: 410, status: 'ACTIVE' },
-        { id: 'app-mess-prep', name: 'Commercial Grain Grinders & Mixers', type: 'COMPUTING', ratedWatts: 500, reactiveVar: 100, status: 'IDLE' }
+        { id: 'mess-coldstorage', name: 'Cold Storage Walk-in Compressor', type: 'HVAC', ratedWatts: 2100, reactiveVar: 610, status: 'ACTIVE' },
+        { id: 'mess-exhaust', name: 'Commercial Chimney Hood Blowers', type: 'HVAC', ratedWatts: 1250, reactiveVar: 310, status: 'ACTIVE' },
+        { id: 'mess-grinders', name: 'Commercial Grain Grinders', type: 'COMPUTING', ratedWatts: 500, reactiveVar: 60, status: 'ACTIVE' }
       ]
     }
   ];
@@ -207,31 +324,30 @@ export class CampusEnergySimulator {
     {
       id: 'log-001',
       timestamp: new Date(Date.now() - 3600000 * 2).toISOString(),
-      blockId: 'svvv-blk-b-lh-101',
-      blockName: 'Auditorium Lecture Hall 101',
-      action: 'Automated relay cut-off: 4 Projectors & Fan bank idle post-lecture',
-      resolvedBy: 'Smart NILM Guard (Auto)',
+      blockId: 'main-blk-fl2-r204',
+      blockName: 'Advanced AI & Computing Lab (Room 204)',
+      action: 'Automated NILM cutoff: 18 Workstations & Cassette AC left running',
+      resolvedBy: 'EcoPulse Guard (Auto-Relay)',
       department: 'Computer Science & Engg',
-      kwhPrevented: 3.8,
-      costSavedInr: 32.3,
-      creditsAwarded: 40
+      kwhPrevented: 4.2,
+      costSavedInr: 35.7,
+      creditsAwarded: 50
     },
     {
       id: 'log-002',
-      timestamp: new Date(Date.now() - 3600000 * 5).toISOString(),
-      blockId: 'svvv-blk-mech-cad',
-      blockName: 'Mechanical CAD/CAM Suite',
-      action: 'Manual override via Student App: Turned off idle render bank',
-      resolvedBy: 'Aman Verma (ME 3rd Yr)',
+      timestamp: new Date(Date.now() - 3600000 * 4).toISOString(),
+      blockId: 'mech-blk-fl1-r112',
+      blockName: 'CAD/CAM Simulation Suite (Room 112)',
+      action: 'Student breaker trip override: Isolated idle CAD workstations',
+      resolvedBy: 'Aman Patel (ME 3rd Yr)',
       department: 'Mechanical Engineering',
-      kwhPrevented: 6.2,
-      costSavedInr: 52.7,
+      kwhPrevented: 5.8,
+      costSavedInr: 49.3,
       creditsAwarded: 50
     }
   ];
 
   public getStatus(): CampusBlock[] {
-    // Add realistic physics jitter (+/- 15W active power, +/- 0.4V)
     return this.blocks.map((b) => {
       const jitterWatts = Math.round((Math.random() * 30 - 15));
       const jitterVoltage = Number((Math.random() * 0.8 - 0.4).toFixed(1));
@@ -252,7 +368,6 @@ export class CampusEnergySimulator {
     const preventedKw = (block.activePowerWatts - block.baselineIdleWatts) / 1000.0;
     const costSaved = Number((preventedKw * 8.5).toFixed(2));
 
-    // Reset block power to nominal baseline
     block.hasGhostLeak = false;
     block.ghostLeakSeverity = 0;
     block.activePowerWatts = block.baselineIdleWatts;
@@ -260,7 +375,6 @@ export class CampusEnergySimulator {
     block.wastedCostPerHourInr = 0;
     block.wastedCo2KgPerHour = 0;
     
-    // Shut off non-essential appliances
     block.appliances.forEach((app) => {
       if (app.type !== 'LIGHTING') {
         app.status = 'CUT_OFF';
@@ -284,15 +398,15 @@ export class CampusEnergySimulator {
     return { success: true, log: newLog };
   }
 
-  public triggerDemoLeak(blockId: string): boolean {
+  public triggerDemoLeak(blockId: string = 'main-blk-fl2-r204'): boolean {
     const block = this.blocks.find((b) => b.id === blockId);
     if (!block) return false;
     block.hasGhostLeak = true;
-    block.ghostLeakSeverity = 0.85;
-    block.activePowerWatts = block.baselineIdleWatts + 2200;
-    block.leakDescription = 'High-draw Split AC & 15 PCs powered with zero room occupancy';
-    block.wastedCostPerHourInr = 18.7;
-    block.wastedCo2KgPerHour = 1.8;
+    block.ghostLeakSeverity = 0.88;
+    block.activePowerWatts = block.baselineIdleWatts + 2540;
+    block.leakDescription = 'Heavy cassette AC & workstation clusters left powered with 0 room occupants';
+    block.wastedCostPerHourInr = 21.5;
+    block.wastedCo2KgPerHour = 2.08;
     block.appliances.forEach((a) => (a.status = 'ACTIVE'));
     return true;
   }
@@ -305,9 +419,9 @@ export class CampusEnergySimulator {
     const hours = ['00:00', '02:00', '04:00', '06:00', '08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00'];
     return hours.map((h, i) => {
       const isNight = i < 3 || i > 9;
-      const actualKwh = isNight ? 28 + Math.round(Math.random() * 8) : 95 + Math.round(Math.random() * 25);
-      const baselineKwh = isNight ? 12 : 70;
-      const ghostWasteKwh = Math.max(0, actualKwh - (baselineKwh + (isNight ? 5 : 15)));
+      const actualKwh = isNight ? 32 + Math.round(Math.random() * 8) : 110 + Math.round(Math.random() * 25);
+      const baselineKwh = isNight ? 14 : 75;
+      const ghostWasteKwh = Math.max(0, actualKwh - (baselineKwh + (isNight ? 6 : 18)));
       return {
         hour: h,
         actualKwh,

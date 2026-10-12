@@ -23,11 +23,11 @@ interface DepartmentScore {
 }
 
 let departmentLeaderboard: DepartmentScore[] = [
-  { rank: 1, department: 'Computer Science & Engg', code: 'CSE', greenCredits: 4420, kwhSaved: 365, foodSavedKg: 84.5, streakDays: 14, activeWarriors: 142 },
-  { rank: 2, department: 'Mechanical Engineering', code: 'ME', greenCredits: 3980, kwhSaved: 310, foodSavedKg: 71.0, streakDays: 9, activeWarriors: 98 },
-  { rank: 3, department: 'Civil Engineering', code: 'CE', greenCredits: 3250, kwhSaved: 225, foodSavedKg: 52.3, streakDays: 6, activeWarriors: 65 },
-  { rank: 4, department: 'Electronics & Comm (ECE)', code: 'ECE', greenCredits: 2980, kwhSaved: 195, foodSavedKg: 46.8, streakDays: 5, activeWarriors: 58 },
-  { rank: 5, department: 'Information Technology', code: 'IT', greenCredits: 2710, kwhSaved: 170, foodSavedKg: 40.2, streakDays: 4, activeWarriors: 52 },
+  { rank: 1, department: 'Computer Science & Engg (Main Block)', code: 'CSE', greenCredits: 4420, kwhSaved: 365, foodSavedKg: 84.5, streakDays: 14, activeWarriors: 142 },
+  { rank: 2, department: 'Mechanical Engineering (Mech Block)', code: 'ME', greenCredits: 3980, kwhSaved: 310, foodSavedKg: 71.0, streakDays: 9, activeWarriors: 98 },
+  { rank: 3, department: 'Management Studies (MBA Block)', code: 'MBA', greenCredits: 3450, kwhSaved: 245, foodSavedKg: 62.0, streakDays: 7, activeWarriors: 75 },
+  { rank: 4, department: 'Information Technology (Main Block)', code: 'IT', greenCredits: 2980, kwhSaved: 195, foodSavedKg: 46.8, streakDays: 5, activeWarriors: 58 },
+  { rank: 5, department: 'Central Hostel Dining Council', code: 'HOSTEL', greenCredits: 2710, kwhSaved: 170, foodSavedKg: 40.2, streakDays: 4, activeWarriors: 52 },
 ];
 
 // 1. Campus Status & NILM Telemetry

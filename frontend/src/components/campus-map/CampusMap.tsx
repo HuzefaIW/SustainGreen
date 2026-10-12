@@ -3,7 +3,7 @@ import {
   Zap, AlertTriangle, ShieldCheck, Wifi, Clock, 
   Cpu, RefreshCw, Activity, ArrowRight,
   TrendingDown, CheckCircle2, SlidersHorizontal, Layers,
-  Building, Radio, Check, Server
+  Building, Radio, Check, Server, Filter
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -19,6 +19,9 @@ export interface CampusBlock {
   id: string;
   code: string;
   name: string;
+  building?: string;
+  floor?: number;
+  roomNumber?: string;
   department: string;
   category: string;
   capacity: number;
@@ -52,9 +55,18 @@ export const CampusMap: React.FC<CampusMapProps> = ({
   history,
   resolvingId,
 }) => {
-  const [selectedBlockId, setSelectedBlockId] = useState<string>(blocks[0]?.id || 'svvv-blk-a-cs-lab-2');
-  const selectedBlock = blocks.find((b) => b.id === selectedBlockId) || blocks[0];
+  const [selectedBuilding, setSelectedBuilding] = useState<string>('ALL');
+  const [selectedFloor, setSelectedFloor] = useState<number | 'ALL'>('ALL');
+  const [selectedBlockId, setSelectedBlockId] = useState<string>(blocks[0]?.id || 'main-blk-fl2-r204');
 
+  // Filter blocks based on user's 3-block 3-floor hierarchy
+  const filteredBlocks = blocks.filter((b) => {
+    const matchesBuilding = selectedBuilding === 'ALL' || b.building === selectedBuilding;
+    const matchesFloor = selectedFloor === 'ALL' || b.floor === selectedFloor;
+    return matchesBuilding && matchesFloor;
+  });
+
+  const selectedBlock = blocks.find((b) => b.id === selectedBlockId) || filteredBlocks[0] || blocks[0];
   const totalGhostLeaks = blocks.filter((b) => b.hasGhostLeak).length;
   const totalWastedCostPerHour = blocks.reduce((sum, b) => sum + (b.hasGhostLeak ? b.wastedCostPerHourInr : 0), 0);
 
@@ -95,6 +107,105 @@ export const CampusMap: React.FC<CampusMapProps> = ({
         </div>
       )}
 
+      {/* College Block & Floor Filter Ribbon */}
+      <div className="bg-white border border-zinc-200/90 rounded-xl p-3.5 shadow-subtle flex flex-col lg:flex-row lg:items-center justify-between gap-3 text-xs">
+        {/* Block Selector */}
+        <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 lg:pb-0">
+          <span className="text-zinc-400 font-mono text-[11px] mr-1 flex items-center space-x-1">
+            <Building className="w-3.5 h-3.5 text-zinc-500" />
+            <span>CAMPUS BLOCK:</span>
+          </span>
+          <button
+            onClick={() => setSelectedBuilding('ALL')}
+            className={`px-2.5 py-1 rounded-md font-medium transition cursor-pointer ${
+              selectedBuilding === 'ALL'
+                ? 'bg-zinc-900 text-white shadow-2xs'
+                : 'bg-zinc-50 hover:bg-zinc-100 text-zinc-600 border border-zinc-200/70'
+            }`}
+          >
+            All Blocks
+          </button>
+          <button
+            onClick={() => setSelectedBuilding('Main Block')}
+            className={`px-2.5 py-1 rounded-md font-medium transition cursor-pointer ${
+              selectedBuilding === 'Main Block'
+                ? 'bg-zinc-900 text-white shadow-2xs'
+                : 'bg-zinc-50 hover:bg-zinc-100 text-zinc-600 border border-zinc-200/70'
+            }`}
+          >
+            Main Block
+          </button>
+          <button
+            onClick={() => setSelectedBuilding('Mechanical Engg Block')}
+            className={`px-2.5 py-1 rounded-md font-medium transition cursor-pointer ${
+              selectedBuilding === 'Mechanical Engg Block'
+                ? 'bg-zinc-900 text-white shadow-2xs'
+                : 'bg-zinc-50 hover:bg-zinc-100 text-zinc-600 border border-zinc-200/70'
+            }`}
+          >
+            Mechanical Block
+          </button>
+          <button
+            onClick={() => setSelectedBuilding('MBA Block')}
+            className={`px-2.5 py-1 rounded-md font-medium transition cursor-pointer ${
+              selectedBuilding === 'MBA Block'
+                ? 'bg-zinc-900 text-white shadow-2xs'
+                : 'bg-zinc-50 hover:bg-zinc-100 text-zinc-600 border border-zinc-200/70'
+            }`}
+          >
+            MBA Block
+          </button>
+        </div>
+
+        {/* Floor Selector (101 - 126, 201 - 226, 301 - 326) */}
+        <div className="flex items-center space-x-1.5 border-t lg:border-t-0 pt-2 lg:pt-0 border-zinc-100">
+          <span className="text-zinc-400 font-mono text-[11px] mr-1 flex items-center space-x-1">
+            <Layers className="w-3.5 h-3.5 text-zinc-500" />
+            <span>FLOOR:</span>
+          </span>
+          <button
+            onClick={() => setSelectedFloor('ALL')}
+            className={`px-2 py-0.5 rounded font-mono text-[11px] transition cursor-pointer ${
+              selectedFloor === 'ALL'
+                ? 'bg-zinc-800 text-white'
+                : 'bg-zinc-100 text-zinc-600 hover:text-zinc-900'
+            }`}
+          >
+            All Floors
+          </button>
+          <button
+            onClick={() => setSelectedFloor(1)}
+            className={`px-2 py-0.5 rounded font-mono text-[11px] transition cursor-pointer ${
+              selectedFloor === 1
+                ? 'bg-zinc-800 text-white'
+                : 'bg-zinc-100 text-zinc-600 hover:text-zinc-900'
+            }`}
+          >
+            1st (101–126)
+          </button>
+          <button
+            onClick={() => setSelectedFloor(2)}
+            className={`px-2 py-0.5 rounded font-mono text-[11px] transition cursor-pointer ${
+              selectedFloor === 2
+                ? 'bg-zinc-800 text-white'
+                : 'bg-zinc-100 text-zinc-600 hover:text-zinc-900'
+            }`}
+          >
+            2nd (201–226)
+          </button>
+          <button
+            onClick={() => setSelectedFloor(3)}
+            className={`px-2 py-0.5 rounded font-mono text-[11px] transition cursor-pointer ${
+              selectedFloor === 3
+                ? 'bg-zinc-800 text-white'
+                : 'bg-zinc-100 text-zinc-600 hover:text-zinc-900'
+            }`}
+          >
+            3rd (301–326)
+          </button>
+        </div>
+      </div>
+
       {/* Main Grid: Campus Blocks + Inspector */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column: Campus Nodes (7 cols) */}
@@ -102,25 +213,30 @@ export const CampusMap: React.FC<CampusMapProps> = ({
           <div className="flex justify-between items-center mb-4 pb-3 border-b border-zinc-100">
             <div>
               <div className="flex items-center space-x-2">
-                <h3 className="text-sm font-semibold text-zinc-900">Campus Digital Twin Grid</h3>
+                <h3 className="text-sm font-semibold text-zinc-900">
+                  {selectedBuilding === 'ALL' ? 'SVVV Campus Overview' : selectedBuilding}
+                </h3>
                 <span className="text-[10px] font-mono text-zinc-500 bg-zinc-100 px-1.5 py-0.5 rounded">
-                  5 Feeder Nodes
+                  {filteredBlocks.length} Active Nodes
                 </span>
               </div>
               <p className="text-xs text-zinc-500 mt-0.5">
-                Non-Intrusive Load Monitoring (NILM) & Wi-Fi Bayesian Occupancy Fusion
+                Showing {selectedFloor === 'ALL' ? 'all 3 floors' : `Floor ${selectedFloor}`} telemetry feeds
               </p>
             </div>
 
-            <div className="flex items-center space-x-2 text-xs text-zinc-500 font-mono">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              <span>Telemetry Synced</span>
-            </div>
+            <button
+              onClick={() => onTriggerDemoLeak('main-blk-fl2-r204')}
+              className="text-xs font-medium text-zinc-700 hover:text-black bg-zinc-50 hover:bg-zinc-100 border border-zinc-200 px-2.5 py-1 rounded-md transition flex items-center space-x-1 cursor-pointer"
+            >
+              <SlidersHorizontal className="w-3 h-3 text-zinc-400" />
+              <span>Simulate Leak</span>
+            </button>
           </div>
 
           {/* Interactive Block Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {blocks.map((block) => {
+            {filteredBlocks.map((block) => {
               const isSelected = block.id === selectedBlockId;
               return (
                 <div
@@ -138,9 +254,16 @@ export const CampusMap: React.FC<CampusMapProps> = ({
                 >
                   {/* Top Bar: Code & Pill */}
                   <div className="flex justify-between items-start mb-2">
-                    <span className="text-[10px] font-mono font-medium text-zinc-500 bg-zinc-100 px-1.5 py-0.5 rounded">
-                      {block.code}
-                    </span>
+                    <div className="flex items-center space-x-1.5">
+                      <span className="text-[10px] font-mono font-medium text-zinc-500 bg-zinc-100 px-1.5 py-0.5 rounded">
+                        {block.code}
+                      </span>
+                      {block.floor && (
+                        <span className="text-[10px] font-mono text-zinc-400">
+                          Fl {block.floor}
+                        </span>
+                      )}
+                    </div>
                     {block.hasGhostLeak ? (
                       <span className="px-2 py-0.5 bg-rose-50 text-rose-700 text-[10px] font-medium rounded-full border border-rose-200 flex items-center space-x-1">
                         <span className="w-1.5 h-1.5 rounded-full bg-rose-600 animate-pulse" />
@@ -233,7 +356,9 @@ export const CampusMap: React.FC<CampusMapProps> = ({
                     <span className="text-[10px] font-mono font-medium text-zinc-500 bg-zinc-100 px-1.5 py-0.5 rounded">
                       {selectedBlock.code}
                     </span>
-                    <span className="text-[10px] text-zinc-400 font-mono">NODE INSPECTOR</span>
+                    <span className="text-[10px] text-zinc-400 font-mono">
+                      {selectedBlock.building || 'CAMPUS NODE'}
+                    </span>
                   </div>
                   <h3 className="text-sm font-semibold text-zinc-900 mt-1">{selectedBlock.name}</h3>
                   <p className="text-[11px] text-zinc-500">{selectedBlock.department}</p>
@@ -265,7 +390,7 @@ export const CampusMap: React.FC<CampusMapProps> = ({
                   <div className="bg-white p-2 rounded-md border border-zinc-200/60 shadow-2xs">
                     <span className="text-[10px] text-zinc-400 block font-mono">TIMETABLE ERP</span>
                     <span className="font-semibold text-zinc-800 line-clamp-1">
-                      {selectedBlock.scheduledClass ? 'Scheduled' : 'Empty Slot'}
+                      {selectedBlock.scheduledClass ? 'Scheduled Class' : 'Empty Slot'}
                     </span>
                   </div>
 

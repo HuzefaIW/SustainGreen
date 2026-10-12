@@ -4,6 +4,7 @@ import {
   Flame, IndianRupee, RefreshCw, CheckCircle, Eye, ShieldAlert,
   Sliders, Info, Scan, Terminal
 } from 'lucide-react';
+import { API_ENDPOINTS } from '../../config/api';
 
 interface VisionMetrics {
   plateSurfaceAreaMm2: number;
@@ -72,7 +73,7 @@ export const PlateScanner: React.FC = () => {
   const handleRunAudit = async () => {
     setAnalyzing(true);
     try {
-      const res = await fetch('/api/scan-plate', {
+      const res = await fetch(API_ENDPOINTS.scanPlate, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ simulatedPlateType: selectedPreset }),

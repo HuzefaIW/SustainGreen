@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Trophy, Flame, Zap, Utensils, ShieldCheck, Clock, Users, ArrowUpRight, Medal } from 'lucide-react';
+import { API_ENDPOINTS } from '../../config/api';
 
 interface DepartmentStanding {
   rank: number;
@@ -32,8 +33,8 @@ export const Leaderboard: React.FC = () => {
   const fetchData = async () => {
     try {
       const [resStandings, resLogs] = await Promise.all([
-        fetch('/api/leaderboard'),
-        fetch('/api/audit-logs'),
+        fetch(API_ENDPOINTS.leaderboard),
+        fetch(API_ENDPOINTS.auditLogs),
       ]);
       const dataStandings = await resStandings.json();
       const dataLogs = await resLogs.json();

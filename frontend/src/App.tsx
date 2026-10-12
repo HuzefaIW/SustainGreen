@@ -9,6 +9,7 @@ import { CampusMap, CampusBlock } from './components/campus-map/CampusMap';
 import { PlateScanner } from './components/scanner/PlateScanner';
 import { MessPredictor } from './components/mess/MessPredictor';
 import { Leaderboard } from './components/leaderboard/Leaderboard';
+import { API_ENDPOINTS } from './config/api';
 
 export function App() {
   const [activeTab, setActiveTab] = useState<'MAP' | 'SCANNER' | 'MESS' | 'LEADERBOARD'>('MAP');
@@ -21,7 +22,7 @@ export function App() {
   // Poll Campus Telemetry
   const fetchCampusStatus = async () => {
     try {
-      const res = await fetch('/api/campus-status');
+      const res = await fetch(API_ENDPOINTS.campusStatus);
       const data = await res.json();
       setBlocks(data.blocks || []);
       setTotalActiveWatts(data.totalActiveWatts || 0);
@@ -33,7 +34,7 @@ export function App() {
 
   const fetchCampusHistory = async () => {
     try {
-      const res = await fetch('/api/campus-history');
+      const res = await fetch(API_ENDPOINTS.campusHistory);
       const data = await res.json();
       setHistory(data.history || []);
     } catch (err) {
@@ -51,7 +52,7 @@ export function App() {
   const handleResolveLeak = async (blockId: string) => {
     setResolvingId(blockId);
     try {
-      const res = await fetch('/api/resolve-leak', {
+      const res = await fetch(API_ENDPOINTS.resolveLeak, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ blockId }),
@@ -67,7 +68,7 @@ export function App() {
 
   const handleTriggerDemoLeak = async (blockId: string) => {
     try {
-      await fetch('/api/trigger-demo-leak', {
+      await fetch(API_ENDPOINTS.triggerDemoLeak, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ blockId }),
