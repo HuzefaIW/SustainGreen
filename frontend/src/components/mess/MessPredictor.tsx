@@ -55,42 +55,39 @@ export const MessPredictor: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Top Controller Bar */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+      {/* Vercel Header Card */}
+      <div className="bg-white border border-zinc-200/90 rounded-xl p-5 shadow-subtle">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
           <div>
-            <div className="flex items-center space-x-2.5">
-              <div className="p-1.5 rounded-lg bg-blue-100 text-blue-800">
-                <ChefHat className="w-4 h-4" />
-              </div>
-              <h3 className="text-base font-extrabold text-slate-900">Predictive Mess Kitchen Engine</h3>
-              <span className="px-2.5 py-0.5 bg-blue-100 text-blue-800 text-[10px] font-mono font-bold rounded-full border border-blue-300">
-                MULTIVARIATE DEMAND AI
+            <div className="flex items-center space-x-2">
+              <h3 className="text-sm font-semibold text-zinc-900">Predictive Mess Kitchen Engine</h3>
+              <span className="text-[10px] font-mono text-zinc-500 bg-zinc-100 px-1.5 py-0.5 rounded">
+                DEMAND MULTIVARIATE REGRESSION
               </span>
             </div>
-            <p className="text-xs text-slate-500 font-medium mt-1">
-              Automated kitchen prep optimization eliminating over-cooking using attendance decay and weather telemetry
+            <p className="text-xs text-zinc-500 mt-0.5">
+              Automated kitchen prep quantity optimization using attendance decay and weather telemetry
             </p>
           </div>
 
-          <div className="text-right bg-slate-50 border border-slate-200 px-3.5 py-2 rounded-xl">
-            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Hostel Capacity</span>
-            <span className="text-sm font-extrabold text-slate-900 font-mono">1,200 Registered Diners</span>
+          <div className="text-right text-xs font-mono">
+            <span className="text-zinc-400 block text-[10px]">HOSTEL POPULATION</span>
+            <span className="font-semibold text-zinc-800">1,200 Registered Diners</span>
           </div>
         </div>
 
-        {/* Dynamic Controls Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-slate-100">
+        {/* Minimal Controls Strip */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-zinc-100">
           {/* Day of Week */}
           <div>
-            <label className="text-xs font-bold text-slate-800 block mb-1.5 flex items-center space-x-1.5">
-              <Calendar className="w-3.5 h-3.5 text-blue-600" />
+            <label className="text-xs font-medium text-zinc-700 block mb-1.5 flex items-center space-x-1.5">
+              <Calendar className="w-3.5 h-3.5 text-zinc-400" />
               <span>Day of the Week</span>
             </label>
             <select
               value={day}
               onChange={(e) => setDay(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 transition cursor-pointer"
+              className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:border-zinc-400 transition cursor-pointer"
             >
               <option value="Monday">Monday (92% Turnout)</option>
               <option value="Tuesday">Tuesday (90% Turnout)</option>
@@ -104,33 +101,33 @@ export const MessPredictor: React.FC = () => {
 
           {/* Weather Simulation */}
           <div>
-            <label className="text-xs font-bold text-slate-800 block mb-1.5 flex items-center space-x-1.5">
-              {weather === 'Sunny' ? <Sun className="w-3.5 h-3.5 text-amber-500" /> : <CloudRain className="w-3.5 h-3.5 text-blue-600" />}
+            <label className="text-xs font-medium text-zinc-700 block mb-1.5 flex items-center space-x-1.5">
+              {weather === 'Sunny' ? <Sun className="w-3.5 h-3.5 text-zinc-400" /> : <CloudRain className="w-3.5 h-3.5 text-zinc-400" />}
               <span>Weather Condition</span>
             </label>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => setWeather('Sunny')}
-                className={`py-2 px-3 rounded-xl text-xs font-bold border transition flex items-center justify-center space-x-1.5 cursor-pointer ${
+                className={`py-1.5 px-3 rounded-lg text-xs font-medium border transition flex items-center justify-center space-x-1.5 cursor-pointer ${
                   weather === 'Sunny'
-                    ? 'bg-amber-100 border-amber-300 text-amber-900 shadow-xs ring-1 ring-amber-400'
-                    : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                    ? 'bg-zinc-900 border-zinc-900 text-white shadow-2xs'
+                    : 'bg-zinc-50 border-zinc-200 text-zinc-600 hover:bg-zinc-100'
                 }`}
               >
-                <Sun className="w-3.5 h-3.5 text-amber-600" />
+                <Sun className="w-3 h-3" />
                 <span>Sunny</span>
               </button>
               <button
                 type="button"
                 onClick={() => setWeather('Rainy')}
-                className={`py-2 px-3 rounded-xl text-xs font-bold border transition flex items-center justify-center space-x-1.5 cursor-pointer ${
+                className={`py-1.5 px-3 rounded-lg text-xs font-medium border transition flex items-center justify-center space-x-1.5 cursor-pointer ${
                   weather === 'Rainy'
-                    ? 'bg-blue-100 border-blue-300 text-blue-900 shadow-xs ring-1 ring-blue-400'
-                    : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                    ? 'bg-zinc-900 border-zinc-900 text-white shadow-2xs'
+                    : 'bg-zinc-50 border-zinc-200 text-zinc-600 hover:bg-zinc-100'
                 }`}
               >
-                <CloudRain className="w-3.5 h-3.5 text-blue-600" />
+                <CloudRain className="w-3 h-3" />
                 <span>Rain (+6%)</span>
               </button>
             </div>
@@ -138,20 +135,20 @@ export const MessPredictor: React.FC = () => {
 
           {/* Exam Period Toggle */}
           <div>
-            <label className="text-xs font-bold text-slate-800 block mb-1.5">
+            <label className="text-xs font-medium text-zinc-700 block mb-1.5">
               Academic Exam Schedule
             </label>
             <button
               type="button"
               onClick={() => setIsExam(!isExam)}
-              className={`w-full py-2 px-3.5 rounded-xl text-xs font-bold border transition flex items-center justify-between cursor-pointer ${
+              className={`w-full py-1.5 px-3 rounded-lg text-xs font-medium border transition flex items-center justify-between cursor-pointer ${
                 isExam
-                  ? 'bg-purple-100 border-purple-300 text-purple-900 ring-1 ring-purple-400 shadow-xs'
-                  : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                  ? 'bg-zinc-900 border-zinc-900 text-white shadow-2xs'
+                  : 'bg-zinc-50 border-zinc-200 text-zinc-600 hover:bg-zinc-100'
               }`}
             >
               <span>Mid-Term Exam Period</span>
-              <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${isExam ? 'bg-purple-600 text-white' : 'bg-slate-200 text-slate-600'}`}>
+              <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded font-semibold ${isExam ? 'bg-zinc-800 text-white' : 'bg-zinc-200 text-zinc-600'}`}>
                 {isExam ? 'ACTIVE (+8%)' : 'OFF'}
               </span>
             </button>
@@ -163,131 +160,119 @@ export const MessPredictor: React.FC = () => {
       {forecast && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Comparison Cards (7 cols) */}
-          <div className="lg:col-span-7 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
-            <h4 className="text-sm font-extrabold text-slate-900 flex items-center justify-between pb-3 border-b border-slate-100">
-              <span>Cooking Volume Calibration</span>
-              <span className="text-xs text-blue-700 font-mono font-bold bg-blue-50 px-2.5 py-0.5 rounded-md border border-blue-200">
-                AI Confidence: {forecast.confidenceIntervalPct}%
+          <div className="lg:col-span-7 bg-white border border-zinc-200/90 rounded-xl p-5 shadow-subtle space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
+              <h4 className="text-sm font-semibold text-zinc-900">Cooking Volume Calibration</h4>
+              <span className="text-[10px] font-mono text-zinc-500">
+                Confidence Interval: {forecast.confidenceIntervalPct}%
               </span>
-            </h4>
+            </div>
 
             {/* Side-by-Side Comparison */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               {/* Conventional Blind Prep */}
-              <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 text-xs">
-                <span className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider block mb-1">
+              <div className="p-4 rounded-xl bg-zinc-50 border border-zinc-200/80 text-xs">
+                <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider block mb-1">
                   Conventional Blind Cooking
                 </span>
-                <span className="text-3xl font-extrabold font-mono text-slate-800 block mb-2">
+                <span className="text-2xl font-bold font-mono text-zinc-800 block mb-2">
                   {forecast.conventionalCookKg} kg
                 </span>
-                <p className="text-slate-600 text-xs font-medium leading-relaxed">
-                  Cooks assume 100% capacity regardless of weekend departures or weather.
+                <p className="text-zinc-500 text-[11px] leading-relaxed">
+                  Cooks assume 100% capacity regardless of weekend departures or exam trends.
                 </p>
-                <div className="mt-3.5 pt-2.5 border-t border-slate-200 text-rose-700 text-xs font-bold flex items-center space-x-1.5">
-                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
-                  <span>Avg {forecast.savedFoodKg} kg food discarded daily</span>
+                <div className="mt-3 pt-2 border-t border-zinc-200 text-rose-600 text-[11px] font-medium flex items-center space-x-1">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>Avg {forecast.savedFoodKg} kg food discarded</span>
                 </div>
               </div>
 
               {/* EcoPulse Demand-Driven Prep */}
-              <div className="p-5 rounded-2xl bg-emerald-50/70 border border-emerald-300 text-xs relative overflow-hidden shadow-xs">
-                <div className="absolute top-3 right-3 px-2.5 py-0.5 bg-emerald-600 text-white text-[10px] font-mono font-bold rounded-md">
+              <div className="p-4 rounded-xl bg-emerald-50/40 border border-emerald-200 text-xs relative">
+                <div className="absolute top-2.5 right-2.5 px-1.5 py-0.2 bg-emerald-100 text-emerald-800 text-[10px] font-mono font-medium rounded">
                   RECOMMENDED
                 </div>
-                <span className="text-[10px] font-mono font-bold text-emerald-800 uppercase tracking-wider block mb-1">
+                <span className="text-[10px] font-mono text-emerald-700 uppercase tracking-wider block mb-1">
                   EcoPulse AI Prep Volume
                 </span>
-                <span className="text-3xl font-extrabold font-mono text-emerald-900 block mb-2">
+                <span className="text-2xl font-bold font-mono text-emerald-700 block mb-2">
                   {forecast.optimizedCookKg} kg
                 </span>
-                <p className="text-emerald-950 text-xs font-medium leading-relaxed">
-                  Calibrated for <strong className="text-emerald-900 font-bold">{forecast.expectedDiners} projected diners</strong> with dynamic safety stock.
+                <p className="text-zinc-600 text-[11px] leading-relaxed">
+                  Calibrated for <strong className="text-zinc-900">{forecast.expectedDiners} projected diners</strong> with dynamic safety buffer.
                 </p>
-                <div className="mt-3.5 pt-2.5 border-t border-emerald-200 text-emerald-800 text-xs font-bold flex items-center space-x-1.5">
-                  <CheckCircle className="w-4 h-4 shrink-0 text-emerald-600" />
-                  <span>Prevents {forecast.savedFoodKg} kg kitchen overprep</span>
+                <div className="mt-3 pt-2 border-t border-emerald-200/80 text-emerald-700 text-[11px] font-medium flex items-center space-x-1">
+                  <CheckCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>Prevents {forecast.savedFoodKg} kg overprep</span>
                 </div>
               </div>
             </div>
 
             {/* Savings Hero Grid */}
-            <div className="grid grid-cols-3 gap-3 pt-4 border-t border-slate-100">
-              <div className="p-4 rounded-xl bg-amber-50/60 border border-amber-200 text-center">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800 block">Food Waste Averted</span>
-                <span className="text-xl font-extrabold font-mono text-amber-950 mt-1 block">
+            <div className="grid grid-cols-3 gap-3 pt-3 border-t border-zinc-100">
+              <div className="p-3 rounded-lg bg-zinc-50 border border-zinc-200/60 text-center">
+                <span className="text-[10px] text-zinc-400 font-mono block">FOOD SAVED</span>
+                <span className="text-base font-bold font-mono text-zinc-900 mt-0.5 block">
                   {forecast.savedFoodKg} kg
                 </span>
               </div>
-              <div className="p-4 rounded-xl bg-emerald-50/60 border border-emerald-200 text-center">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 block">Budget Saved Today</span>
-                <span className="text-xl font-extrabold font-mono text-emerald-950 mt-1 block">
+              <div className="p-3 rounded-lg bg-zinc-50 border border-zinc-200/60 text-center">
+                <span className="text-[10px] text-zinc-400 font-mono block">BUDGET SAVED</span>
+                <span className="text-base font-bold font-mono text-zinc-900 mt-0.5 block">
                   ₹{forecast.costSavedInr.toLocaleString()}
                 </span>
               </div>
-              <div className="p-4 rounded-xl bg-blue-50/60 border border-blue-200 text-center">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-800 block">CO2e Prevented</span>
-                <span className="text-xl font-extrabold font-mono text-blue-950 mt-1 block">
+              <div className="p-3 rounded-lg bg-zinc-50 border border-zinc-200/60 text-center">
+                <span className="text-[10px] text-zinc-400 font-mono block">CO2e PREVENTED</span>
+                <span className="text-base font-bold font-mono text-zinc-900 mt-0.5 block">
                   {forecast.co2eSavedKg} kg
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Raw Ingredient BOM (Bill of Materials) (5 cols) */}
-          <div className="lg:col-span-5 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
+          {/* Raw Ingredient BOM (5 cols) */}
+          <div className="lg:col-span-5 bg-white border border-zinc-200/90 rounded-xl p-5 shadow-subtle flex flex-col justify-between">
             <div>
-              <div className="flex justify-between items-center mb-4 pb-3 border-b border-slate-100">
-                <h4 className="text-sm font-extrabold text-slate-900 flex items-center space-x-2">
-                  <PackageCheck className="w-4 h-4 text-emerald-600" />
+              <div className="flex justify-between items-center mb-3 pb-3 border-b border-zinc-100">
+                <h4 className="text-sm font-semibold text-zinc-900 flex items-center space-x-2">
+                  <PackageCheck className="w-4 h-4 text-zinc-400" />
                   <span>Kitchen Raw Ingredient BOM</span>
                 </h4>
-                <span className="text-[10px] font-mono font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
-                  DISPATCH PACK
-                </span>
+                <span className="text-[10px] font-mono text-zinc-400">DISPATCH PACK</span>
               </div>
 
-              <p className="text-xs text-slate-500 font-medium mb-4 leading-relaxed">
-                Direct raw procurement dispatch for kitchen head chef based on {forecast.expectedDiners} diners:
+              <p className="text-xs text-zinc-500 mb-3 leading-relaxed">
+                Procurement dispatch for head chef based on {forecast.expectedDiners} diners:
               </p>
 
-              <div className="space-y-2.5">
-                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
-                  <span className="text-slate-800 font-bold">Grain Rice (Basmati / Sona Masoori)</span>
-                  <span className="font-mono font-extrabold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
-                    {forecast.bom.grainRiceKg} kg
-                  </span>
+              <div className="space-y-2 font-mono text-xs">
+                <div className="p-2.5 rounded-lg bg-zinc-50 border border-zinc-200/70 flex items-center justify-between">
+                  <span className="text-zinc-700">Grain Rice (Basmati)</span>
+                  <span className="font-bold text-zinc-900">{forecast.bom.grainRiceKg} kg</span>
                 </div>
-                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
-                  <span className="text-slate-800 font-bold">Dal & Lentil Pulses (Toor/Moong)</span>
-                  <span className="font-mono font-extrabold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
-                    {forecast.bom.dalPulsesKg} kg
-                  </span>
+                <div className="p-2.5 rounded-lg bg-zinc-50 border border-zinc-200/70 flex items-center justify-between">
+                  <span className="text-zinc-700">Dal & Lentil Pulses</span>
+                  <span className="font-bold text-zinc-900">{forecast.bom.dalPulsesKg} kg</span>
                 </div>
-                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
-                  <span className="text-slate-800 font-bold">Whole Wheat Atta (Roti dough)</span>
-                  <span className="font-mono font-extrabold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
-                    {forecast.bom.wheatFlourAttaKg} kg
-                  </span>
+                <div className="p-2.5 rounded-lg bg-zinc-50 border border-zinc-200/70 flex items-center justify-between">
+                  <span className="text-zinc-700">Wheat Atta (Roti)</span>
+                  <span className="font-bold text-zinc-900">{forecast.bom.wheatFlourAttaKg} kg</span>
                 </div>
-                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
-                  <span className="text-slate-800 font-bold">Fresh Seasonal Vegetables</span>
-                  <span className="font-mono font-extrabold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
-                    {forecast.bom.freshVegetablesKg} kg
-                  </span>
+                <div className="p-2.5 rounded-lg bg-zinc-50 border border-zinc-200/70 flex items-center justify-between">
+                  <span className="text-zinc-700">Seasonal Vegetables</span>
+                  <span className="font-bold text-zinc-900">{forecast.bom.freshVegetablesKg} kg</span>
                 </div>
-                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
-                  <span className="text-slate-800 font-bold">Refined Cooking Oil</span>
-                  <span className="font-mono font-extrabold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
-                    {forecast.bom.cookingOilLiters} Liters
-                  </span>
+                <div className="p-2.5 rounded-lg bg-zinc-50 border border-zinc-200/70 flex items-center justify-between">
+                  <span className="text-zinc-700">Refined Cooking Oil</span>
+                  <span className="font-bold text-zinc-900">{forecast.bom.cookingOilLiters} L</span>
                 </div>
               </div>
             </div>
 
-            <div className="pt-4 border-t border-slate-100 mt-4 text-[11px] text-slate-500 font-medium flex justify-between items-center">
-              <span>Virtual Water Saved: {forecast.waterSavedLiters.toLocaleString()} L</span>
-              <span className="text-emerald-700 font-bold">SVVV Mess Approved</span>
+            <div className="pt-3 border-t border-zinc-100 mt-4 text-[11px] text-zinc-400 font-mono flex justify-between items-center">
+              <span>Virtual Water: {forecast.waterSavedLiters.toLocaleString()} L</span>
+              <span>SVVV Mess Approved</span>
             </div>
           </div>
         </div>
