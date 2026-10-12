@@ -73,47 +73,69 @@ export const MessPredictor: React.FC = () => {
   // Fetch Forecast from Backend Engine
   const fetchForecast = async () => {
     setLoading(true);
+    setFetchError(null);
     try {
-      const query = `?day=${encodeURIComponent(day)}&weather=${encodeURIComponent(weather)}&isExam=${isExam}&eligiblePopulation=${studentCapacity}`;
+      const query = `?day=${encodeURIComponent(day)}&weather=${encodeURIComponent(weather)}&isExam=${isExam}&eligiblePopulation=${studentCapacity}&totalStudents=${studentCapacity}`;
       const url = API_ENDPOINTS.messForecast(query);
-
 
       const res = await fetch(url);
 
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
       const data = await res.json();
       
-      const fc = data.forecast;
-      const bomRice = fc.recipeBreakdown?.find((r: any) => r.item.includes('Rice'))?.quantityKg || Math.round(fc.attendance.expectedDiners * 0.12 * 10) / 10;
-      const bomDal = fc.recipeBreakdown?.find((r: any) => r.item.includes('Dal'))?.quantityKg || Math.round(fc.attendance.expectedDiners * 0.05 * 10) / 10;
-      const bomAtta = fc.recipeBreakdown?.find((r: any) => r.item.includes('Atta'))?.quantityKg || Math.round(fc.attendance.expectedDiners * 0.09 * 10) / 10;
-      const bomVeg = fc.recipeBreakdown?.find((r: any) => r.item.includes('Vegetables'))?.quantityKg || Math.round(fc.attendance.expectedDiners * 0.14 * 10) / 10;
-      const bomOil = fc.recipeBreakdown?.find((r: any) => r.item.includes('Oil'))?.quantityKg || Math.round(fc.attendance.expectedDiners * 0.02 * 10) / 10;
+      const fc = data.forecast || data;
+
+      const expectedDiners = Number(fc.attendance?.expectedDiners ?? fc.expectedDiners ?? Math.round(studentCapacity * 0.7));
+      const turnoutPercentage = Number(fc.attendance?.predictedAttendancePct ?? fc.turnoutPercentage ?? 70);
+      const conventionalCookKg = Number(fc.preparation?.conventionalPreparationKg ?? fc.conventionalCookKg ?? Number((studentCapacity * 0.38).toFixed(1)));
+      const recommendedCookKg = Number(fc.preparation?.recommendedPreparationKg ?? fc.recommendedCookKg ?? Number((expectedDiners * 0.36 * 1.05).toFixed(1)));
+      const safetyBufferKg = Number(fc.preparation?.safetyBufferKg ?? fc.safetyBufferKg ?? Number((expectedDiners * 0.36 * 0.05).toFixed(1)));
+      const projectedAvoidableOverproductionKg = Number(fc.preparation?.avoidableOverproductionKg ?? fc.projectedAvoidableOverproductionKg ?? Math.max(0, conventionalCookKg - recommendedCookKg));
+      const projectedCostAvoidedInr = Number(fc.financialAndEcological?.projectedCostAvoided ?? fc.projectedCostAvoidedInr ?? Math.round(projectedAvoidableOverproductionKg * 85));
+      const projectedCo2eAvoidedKg = Number(fc.financialAndEcological?.projectedCo2eAvoidedKg ?? fc.projectedCo2eAvoidedKg ?? Number((projectedAvoidableOverproductionKg * 2.5).toFixed(1)));
+
+      const explanation = fc.explanation || `Forecast demand for ${day} under ${weather} conditions.`;
+      const uncertainty = (typeof fc.uncertainty === 'string' ? fc.uncertainty : fc.uncertainty?.level) || 'low';
+      const uncertaintyReason = fc.uncertaintyReason || fc.uncertainty?.reason || 'Standard demand pattern.';
+
+      const auditData = {
+        isIntegrated: Boolean(fc.auditData?.isIntegrated ?? fc.auditDataIntegration?.hasIntegratedAuditData),
+        averageLeftoverPercent: fc.auditData?.averageLeftoverPercent ?? fc.auditDataIntegration?.averagePlateLeftoverPercent ?? null,
+        auditsCount: fc.auditData?.auditCount ?? fc.auditDataIntegration?.auditsInformingCount ?? 0,
+        timeframe: fc.auditData?.timeframe ?? fc.auditDataIntegration?.timeframe ?? null,
+        note: fc.auditData?.note ?? fc.auditDataIntegration?.notes ?? 'Baseline institutional demand model.',
+      };
+
+      const bomRice = Number(fc.bom?.grainRiceKg ?? (fc.recipeBreakdown?.find((r: any) => r.item?.includes('Rice'))?.quantityKg) ?? Number((expectedDiners * 0.12).toFixed(1)));
+      const bomDal = Number(fc.bom?.dalPulsesKg ?? (fc.recipeBreakdown?.find((r: any) => r.item?.includes('Dal'))?.quantityKg) ?? Number((expectedDiners * 0.05).toFixed(1)));
+      const bomAtta = Number(fc.bom?.wheatFlourAttaKg ?? (fc.recipeBreakdown?.find((r: any) => r.item?.includes('Atta'))?.quantityKg) ?? Number((expectedDiners * 0.09).toFixed(1)));
+      const bomVeg = Number(fc.bom?.freshVegetablesKg ?? (fc.recipeBreakdown?.find((r: any) => r.item?.includes('Vegetables'))?.quantityKg) ?? Number((expectedDiners * 0.14).toFixed(1)));
+      const bomOil = Number(fc.bom?.cookingOilLiters ?? (fc.recipeBreakdown?.find((r: any) => r.item?.includes('Oil'))?.quantityKg) ?? Number((expectedDiners * 0.02).toFixed(1)));
+
+      const recommendations = Array.isArray(fc.recommendations) && fc.recommendations.length > 0
+        ? fc.recommendations
+        : [
+            `Batch 1 (Opening service): Prepare ~${Math.round(recommendedCookKg * 0.65)} kg (${Math.round(expectedDiners * 0.65)} portions).`,
+            `Batch 2 (Buffer demand): Prepare remaining ~${Math.round(recommendedCookKg * 0.35)} kg based on actual headcount arrivals.`,
+            `Maintain ${safetyBufferKg} kg (5%) hot kitchen buffer to avoid student food run-outs.`
+          ];
+
+      const forecastId = fc.id || fc.forecastId || fc.forecast?.forecastId || `fc-${Date.now()}`;
 
       const mapped: ForecastData = {
-        expectedDiners: fc.attendance.expectedDiners,
-        turnoutPercentage: fc.attendance.predictedAttendancePct,
-        conventionalCookKg: fc.preparation.conventionalPreparationKg,
-        recommendedCookKg: fc.preparation.recommendedPreparationKg,
-        safetyBufferKg: fc.preparation.safetyBufferKg,
-        projectedAvoidableOverproductionKg: fc.preparation.avoidableOverproductionKg,
-        projectedCostAvoidedInr: fc.financialAndEcological.projectedCostAvoided,
-        projectedCo2eAvoidedKg: fc.financialAndEcological.projectedCo2eAvoidedKg,
-        explanation: fc.explanation,
-        uncertainty: fc.uncertainty.level,
-        uncertaintyReason: fc.uncertainty.reason,
-        auditData: {
-          isIntegrated: fc.auditDataIntegration.hasIntegratedAuditData,
-          averageLeftoverPercent: fc.auditDataIntegration.averagePlateLeftoverPercent,
-          auditsCount: fc.auditDataIntegration.auditsInformingCount,
-          timeframe: fc.auditDataIntegration.timeframe,
-          note: fc.auditDataIntegration.notes,
-        },
-        recommendations: [
-          `Batch 1 (Dinner opening 7:30 PM): Prepare ~${Math.round(fc.preparation.recommendedPreparationKg * 0.65)} kg (${Math.round(fc.attendance.expectedDiners * 0.65)} portions).`,
-          `Batch 2 (Buffer demand 8:30 PM): Prepare remaining ~${Math.round(fc.preparation.recommendedPreparationKg * 0.35)} kg based on actual headcount arrivals.`,
-          `Maintain ${fc.preparation.safetyBufferKg} kg (5%) hot kitchen buffer to avoid student food run-outs.`
-        ],
+        expectedDiners,
+        turnoutPercentage,
+        conventionalCookKg,
+        recommendedCookKg,
+        safetyBufferKg,
+        projectedAvoidableOverproductionKg,
+        projectedCostAvoidedInr,
+        projectedCo2eAvoidedKg,
+        explanation,
+        uncertainty,
+        uncertaintyReason,
+        auditData,
+        recommendations,
         bom: {
           grainRiceKg: bomRice,
           dalPulsesKg: bomDal,
@@ -121,10 +143,11 @@ export const MessPredictor: React.FC = () => {
           freshVegetablesKg: bomVeg,
           cookingOilLiters: bomOil,
         },
-        forecastId: fc.forecastId,
+        forecastId,
       };
 
       setForecast(mapped);
+      setFetchError(null);
     } catch (err: any) {
       console.error('Failed to load mess forecast:', err);
       setFetchError('Failed to fetch forecast from server. Please verify backend connectivity.');

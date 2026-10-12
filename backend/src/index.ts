@@ -167,7 +167,8 @@ app.get('/api/mess-forecast', (req, res) => {
     const day = req.query.day as string | undefined;
     const weather = req.query.weather as string | undefined;
     const isExam = req.query.isExam === 'true';
-    const totalHostelStudents = req.query.totalStudents ? parseInt(req.query.totalStudents as string, 10) : undefined;
+    const rawPop = (req.query.totalStudents || req.query.eligiblePopulation || req.query.studentCapacity) as string | undefined;
+    const totalHostelStudents = rawPop ? parseInt(rawPop, 10) : undefined;
     const foodCostPerKg = req.query.costPerKg ? parseFloat(req.query.costPerKg as string) : undefined;
     const safetyBufferPercent = req.query.buffer ? parseFloat(req.query.buffer as string) : undefined;
     const mealPeriod = (req.query.meal as string) || 'Lunch';
@@ -183,8 +184,42 @@ app.get('/api/mess-forecast', (req, res) => {
       mealPeriod,
     }, auditLogs);
 
+    const safetyBufferKg = Number((forecast.expectedDiners * 0.36 * (forecast.parameters.safetyBufferPercent / 100)).toFixed(1));
+
     res.json({
       ...forecast,
+      safetyBufferKg,
+      forecast: {
+        ...forecast,
+        safetyBufferKg,
+        attendance: {
+          expectedDiners: forecast.expectedDiners,
+          predictedAttendancePct: forecast.turnoutPercentage,
+        },
+        preparation: {
+          conventionalPreparationKg: forecast.conventionalCookKg,
+          recommendedPreparationKg: forecast.recommendedCookKg,
+          safetyBufferKg,
+          avoidableOverproductionKg: forecast.projectedAvoidableOverproductionKg,
+        },
+        financialAndEcological: {
+          projectedCostAvoided: forecast.projectedCostAvoidedInr,
+          projectedCo2eAvoidedKg: forecast.projectedCo2eAvoidedKg,
+          projectedWaterAvoidedLiters: forecast.projectedWaterAvoidedLiters,
+        },
+        uncertainty: {
+          level: forecast.uncertainty,
+          reason: forecast.uncertaintyReason,
+        },
+        auditDataIntegration: {
+          hasIntegratedAuditData: forecast.auditData.isIntegrated,
+          averagePlateLeftoverPercent: forecast.auditData.averageLeftoverPercent,
+          auditsInformingCount: forecast.auditData.auditCount,
+          timeframe: forecast.auditData.timeframe,
+          notes: forecast.auditData.note,
+        },
+        forecastId: forecast.id,
+      },
       // Backwards-compatible aliases for existing consumers
       day: forecast.parameters.day,
       weather: forecast.parameters.weather,
