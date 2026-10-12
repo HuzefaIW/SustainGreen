@@ -39,6 +39,7 @@ export const PlateScanner: React.FC = () => {
   const [selectedPreset, setSelectedPreset] = useState<'NORMAL_TRAY' | 'HEAVY_WASTE' | 'CLEAN_TRAY'>('NORMAL_TRAY');
   const [useWebcam, setUseWebcam] = useState(false);
   const [result, setResult] = useState<ScanResponse | null>(null);
+  const [scanError, setScanError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
@@ -72,16 +73,41 @@ export const PlateScanner: React.FC = () => {
 
   const handleRunAudit = async () => {
     setAnalyzing(true);
+    setScanError(null);
     try {
+      let capturedImage: string | null = null;
+      if (useWebcam && videoRef.current) {
+        const video = videoRef.current;
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth || 640;
+        canvas.height = video.videoHeight || 480;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          capturedImage = canvas.toDataURL('image/jpeg', 0.8);
+        }
+      }
+
       const res = await fetch(API_ENDPOINTS.scanPlate, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ simulatedPlateType: selectedPreset }),
+        body: JSON.stringify({ 
+          imageBase64: capturedImage,
+          isWebcam: useWebcam,
+          simulatedPlateType: selectedPreset 
+        }),
       });
-      const data: ScanResponse = await res.json();
-      setResult(data);
+      const data = await res.json();
+      if (data.status === 'error') {
+        setScanError(data.error || 'No food plate detected in frame.');
+        setResult(null);
+      } else {
+        setResult(data);
+        setScanError(null);
+      }
     } catch (err) {
       console.error('Failed to run plate audit:', err);
+      setScanError('Failed to process image frame.');
     } finally {
       setAnalyzing(false);
     }
@@ -245,6 +271,21 @@ export const PlateScanner: React.FC = () => {
                 </span>
               )}
             </div>
+
+            {scanError && (
+              <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-900 space-y-2 mb-4 shadow-subtle">
+                <div className="flex items-center space-x-2 font-semibold text-rose-800">
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span>Computer Vision Validation: No Tray Detected</span>
+                </div>
+                <p className="text-[11px] text-rose-700 leading-relaxed font-medium">
+                  {scanError}
+                </p>
+                <div className="p-2.5 bg-white/90 rounded-lg border border-rose-200 text-[11px] text-rose-800 font-mono">
+                  💡 <strong>Status:</strong> Point camera at an actual dining tray or select a calibrated preset above.
+                </div>
+              </div>
+            )}
 
             {result ? (
               <div className="space-y-3.5">
