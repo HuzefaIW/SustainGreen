@@ -22,11 +22,11 @@ interface ModuleDropdownProps {
   onChange: (tab: 'MAP' | 'SCANNER' | 'MESS' | 'LEADERBOARD') => void;
 }
 
-const MODULE_OPTIONS: { tab: 'MAP' | 'SCANNER' | 'MESS' | 'LEADERBOARD'; label: string; icon: React.ReactNode }[] = [
-  { tab: 'MAP',         label: 'Campus Energy',              icon: <Zap      className="w-3.5 h-3.5" /> },
-  { tab: 'SCANNER',     label: 'Food Waste Audit',           icon: <Camera   className="w-3.5 h-3.5" /> },
-  { tab: 'MESS',        label: 'Smart Mess Predictor',       icon: <Utensils className="w-3.5 h-3.5" /> },
-  { tab: 'LEADERBOARD', label: 'Green Cup & Activity Ledger',icon: <Trophy   className="w-3.5 h-3.5" /> },
+const MODULE_OPTIONS: { tab: 'MAP' | 'SCANNER' | 'MESS' | 'LEADERBOARD'; label: string; shortLabel: string; icon: React.ReactNode }[] = [
+  { tab: 'MAP',         label: 'Campus Energy',              shortLabel: 'Energy',      icon: <Zap      className="w-4 h-4" /> },
+  { tab: 'SCANNER',     label: 'Food Waste Audit',           shortLabel: 'Food Audit',  icon: <Camera   className="w-4 h-4" /> },
+  { tab: 'MESS',        label: 'Smart Mess Predictor',       shortLabel: 'Mess',        icon: <Utensils className="w-4 h-4" /> },
+  { tab: 'LEADERBOARD', label: 'Green Cup & Activity Ledger',shortLabel: 'Green Cup',   icon: <Trophy   className="w-4 h-4" /> },
 ];
 
 const ModuleDropdown: React.FC<ModuleDropdownProps> = ({ activeTab, onChange }) => {
@@ -49,36 +49,52 @@ const ModuleDropdown: React.FC<ModuleDropdownProps> = ({ activeTab, onChange }) 
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen(v => !v)}
-        className="flex items-center space-x-2 px-3 py-2 rounded-xl bg-white border border-[#CADBC4] text-[#1B3826] text-sm font-semibold hover:bg-[#F0EBE0] transition-colors shadow-2xs"
+        className="flex items-center space-x-1.5 sm:space-x-2 px-2.5 sm:px-3 py-2 min-h-[44px] rounded-xl bg-white border border-[#CADBC4] text-[#1B3826] text-xs sm:text-sm font-semibold hover:bg-[#F0EBE0] transition-colors shadow-2xs cursor-pointer touch-manipulation focus:outline-none focus:ring-2 focus:ring-[#1B3826]"
       >
-        <LayoutGrid className="w-4 h-4 text-[#486340]" />
-        <span className="hidden sm:inline">{active.label}</span>
-        <ChevronDown className={`w-3.5 h-3.5 text-[#486340] transition-transform ${open ? 'rotate-180' : ''}`} />
+        <span className="text-[#486340] shrink-0">{active.icon}</span>
+        <span className="inline sm:hidden font-semibold">{active.shortLabel}</span>
+        <span className="hidden sm:inline font-semibold">{active.label}</span>
+        <ChevronDown className={`w-3.5 h-3.5 text-[#486340] transition-transform shrink-0 ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (
-        <div
-          role="listbox"
-          aria-label="Module selection"
-          className="absolute left-0 top-full mt-1.5 w-56 bg-white border border-[#D8E4D2] rounded-xl shadow-elevated z-50 py-1 overflow-hidden"
-        >
-          {MODULE_OPTIONS.map(opt => (
-            <button
-              key={opt.tab}
-              role="option"
-              aria-selected={opt.tab === activeTab}
-              onClick={() => { onChange(opt.tab); setOpen(false); }}
-              className={`w-full text-left flex items-center space-x-2.5 px-3.5 py-2.5 text-sm transition-colors ${
-                opt.tab === activeTab
-                  ? 'bg-[#EAF2E7] text-[#1B3826] font-semibold'
-                  : 'text-[#374939] hover:bg-[#F5F7F2]'
-              }`}
-            >
-              <span className={opt.tab === activeTab ? 'text-[#1B3826]' : 'text-[#6B8F63]'}>{opt.icon}</span>
-              <span>{opt.label}</span>
-            </button>
-          ))}
-        </div>
+        <>
+          {/* Mobile backdrop for easy dismissal */}
+          <div 
+            className="fixed inset-0 z-40 bg-black/20 backdrop-blur-xs sm:hidden"
+            onClick={() => setOpen(false)}
+            aria-hidden="true"
+          />
+
+          <div
+            role="listbox"
+            aria-label="Module selection"
+            className="fixed sm:absolute top-16 sm:top-full left-3 sm:left-0 right-3 sm:right-auto sm:w-60 bg-white border border-[#D8E4D2] rounded-2xl shadow-elevated z-50 p-1.5 overflow-hidden"
+          >
+            <div className="px-3 py-1.5 text-[11px] font-semibold text-[#8E9789] uppercase tracking-wider border-b border-[#EDF0E9] mb-1 sm:hidden">
+              Switch Module
+            </div>
+            {MODULE_OPTIONS.map(opt => (
+              <button
+                key={opt.tab}
+                role="option"
+                aria-selected={opt.tab === activeTab}
+                onClick={() => { onChange(opt.tab); setOpen(false); }}
+                className={`w-full text-left flex items-center space-x-3 px-3.5 py-3 sm:py-2.5 min-h-[44px] rounded-xl text-sm transition-colors cursor-pointer ${
+                  opt.tab === activeTab
+                    ? 'bg-[#EAF2E7] text-[#1B3826] font-semibold'
+                    : 'text-[#374939] hover:bg-[#F5F7F2]'
+                }`}
+              >
+                <span className={opt.tab === activeTab ? 'text-[#1B3826]' : 'text-[#6B8F63]'}>{opt.icon}</span>
+                <span className="flex-1">{opt.label}</span>
+                {opt.tab === activeTab && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#1B3826]" />
+                )}
+              </button>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
@@ -157,7 +173,10 @@ export function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ blockId }),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(data?.error || `HTTP ${res.status}`);
+      }
       await fetchCampusStatus();
       await fetchCampusHistory();
     } catch (err) {
@@ -175,6 +194,7 @@ export function App() {
         body: JSON.stringify({ blockId }),
       });
       await fetchCampusStatus();
+      await fetchCampusHistory();
     } catch (err) {
       console.error('Failed to trigger demo leak:', err);
     }
@@ -243,29 +263,29 @@ export function App() {
       {/* ── Slim Dashboard Header ──────────────────────────────────────────── */}
       <header className="sticky top-0 z-50 bg-[#FAF6EE]/96 backdrop-blur-md border-b border-[#D8E4D2] relative">
         <HeroBotanicalFramingRight
-          className="absolute -top-4 -right-4 w-48 sm:w-60 h-auto pointer-events-none z-0"
-          opacity={0.28}
+          className="absolute -top-4 -right-4 w-28 sm:w-48 lg:w-60 h-auto pointer-events-none z-0"
+          opacity={0.18}
         />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between gap-3 relative z-10">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 flex items-center justify-between gap-2 sm:gap-3 relative z-10">
 
           {/* Left: Logo + Back + Module Dropdown */}
-          <div className="flex items-center gap-2.5 min-w-0">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
             {/* Back to home */}
             <button
               onClick={handleBackToLanding}
-              className="p-2 rounded-lg bg-white border border-[#CADBC4] text-[#203D1F] hover:bg-[#F0EBE0] transition-colors flex items-center gap-1.5 text-xs font-semibold shrink-0"
+              className="px-2.5 py-2 min-h-[44px] min-w-[40px] rounded-lg bg-white border border-[#CADBC4] text-[#203D1F] hover:bg-[#F0EBE0] transition-colors flex items-center justify-center gap-1 text-xs font-semibold shrink-0 cursor-pointer touch-manipulation focus:outline-none focus:ring-2 focus:ring-[#1B3826]"
               title="Back to EcoPulse overview"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Home</span>
+              <span className="hidden md:inline">Home</span>
             </button>
 
-            {/* Wordmark */}
-            <div className="flex items-center gap-2 shrink-0">
+            {/* Wordmark (compact on narrow screens) */}
+            <div className="hidden xs:flex items-center gap-1.5 shrink-0">
               <div className="w-7 h-7 rounded-lg bg-[#1B3826] text-[#E8EFE5] flex items-center justify-center">
                 <Leaf className="w-4 h-4 stroke-[2.2]" />
               </div>
-              <span className="text-base font-bold text-[#191C1A] hidden sm:block tracking-tight">EcoPulse</span>
+              <span className="text-sm sm:text-base font-bold text-[#191C1A] hidden sm:block tracking-tight">EcoPulse</span>
             </div>
 
             <span className="text-[#CADBC4] text-sm hidden sm:block">/</span>
@@ -275,24 +295,24 @@ export function App() {
           </div>
 
           {/* Right: Status + Simulated badge */}
-          <div className="flex items-center gap-2.5 shrink-0">
-            {/* Current draw */}
-            <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-white border border-[#CADBC4] rounded-lg text-xs">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+            {/* Current draw (visible on sm+) */}
+            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 bg-white border border-[#CADBC4] rounded-lg text-xs">
               <Zap className="w-3.5 h-3.5 text-[#486340]" />
               <span className="font-mono font-bold text-[#191C1A]">{(totalActiveWatts / 1000).toFixed(2)} kW</span>
-              <span className="text-[#8E9789] text-[11px]">draw</span>
+              <span className="text-[#8E9789] text-[11px] hidden md:inline">draw</span>
             </div>
 
             {/* System status pill */}
-            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold ${
+            <div className={`flex items-center gap-1 px-2 sm:px-2.5 py-1.5 min-h-[38px] rounded-lg border text-xs font-semibold ${
               systemNormal
                 ? 'bg-[#F0FDF4] border-[#BBF7D0] text-[#166534]'
                 : 'bg-[#FFFBEB] border-[#FDE68A] text-[#B45309]'
             }`}>
               {systemNormal
-                ? <CheckCircle2 className="w-3.5 h-3.5" />
-                : <AlertTriangle className="w-3.5 h-3.5 animate-pulse" />}
-              <span className="hidden sm:inline">{systemNormal ? 'Normal' : `${activeGhostLeaksCount} Leak${activeGhostLeaksCount > 1 ? 's' : ''}`}</span>
+                ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                : <AlertTriangle className="w-3.5 h-3.5 shrink-0 animate-pulse" />}
+              <span>{systemNormal ? 'Normal' : `${activeGhostLeaksCount} Leak${activeGhostLeaksCount > 1 ? 's' : ''}`}</span>
             </div>
 
             {/* Simulated badge */}
@@ -305,7 +325,7 @@ export function App() {
       </header>
 
       {/* ── Main Content ──────────────────────────────────────────────────── */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 relative z-10">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 relative z-10">
         {activeTab === 'MAP' && (
           <CampusMap
             blocks={blocks}
@@ -324,9 +344,9 @@ export function App() {
 
       {/* ── Minimal Footer ───────────────────────────────────────────────── */}
       <footer className="border-t border-[#D8E4D2] py-3 text-xs text-[#8E9789] relative z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
-          <span>EcoPulse · Campus Sustainability · Simulated telemetry sandbox</span>
-          <span className="font-mono">3s refresh</span>
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-1 text-center sm:text-left">
+          <span>EcoPulse · Campus Sustainability · Simulated sandbox</span>
+          <span className="font-mono text-[11px]">3s refresh</span>
         </div>
       </footer>
     </div>

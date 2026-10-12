@@ -239,7 +239,7 @@ export const FunctionalitySelection: React.FC<FunctionalitySelectionProps> = ({
 
         <button
           onClick={onBackToHome}
-          className="inline-flex items-center space-x-2 text-sm font-medium text-[#486340] hover:text-[#1B3826] px-3.5 py-1.5 rounded-xl border border-[#D5E0D2] bg-[#FFFFFF]/80 hover:bg-[#F2EFE5] transition-colors shadow-2xs focus:outline-hidden focus:ring-2 focus:ring-[#1B3826]"
+          className="inline-flex items-center space-x-2 text-xs sm:text-sm font-medium text-[#486340] hover:text-[#1B3826] px-3.5 py-2 min-h-[44px] rounded-xl border border-[#D5E0D2] bg-[#FFFFFF]/80 hover:bg-[#F2EFE5] transition-colors shadow-2xs focus:outline-hidden focus:ring-2 focus:ring-[#1B3826] cursor-pointer touch-manipulation"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Back to Overview</span>

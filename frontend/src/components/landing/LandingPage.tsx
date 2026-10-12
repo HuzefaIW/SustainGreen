@@ -37,14 +37,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   resolvingId,
 }) => {
   const activeLeakBlock = blocks.find((b) => b.hasGhostLeak) || {
-    id: 'svvv-blk-a-cs-lab-2',
-    name: 'CS Lab 2 (Ground Floor)',
+    id: 'main-blk-fl2-r204',
+    name: 'Advanced AI & Computing Lab (Room 204)',
     department: 'Computer Science & Engg',
-    activePowerWatts: 3820,
-    baselineIdleWatts: 420,
-    wastedCostPerHourInr: 27.2,
-    leakDescription: '18 idle desktops + server rack running post-hours',
+    activePowerWatts: 2680,
+    baselineIdleWatts: 140,
+    wastedCostPerHourInr: 21.59,
+    leakDescription: 'Heavy cassette AC & workstation clusters left powered with 0 room occupants',
   };
+
+  const totalBaselineWatts = blocks.length > 0
+    ? blocks.reduce((sum, b) => sum + (b.baselineIdleWatts || 0), 0)
+    : 770;
+  const baselineKw = (totalBaselineWatts / 1000).toFixed(2);
 
   const scrollToSection = (id: string) => {
     const el = document.getElementById(id);
@@ -73,7 +78,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </div>
           </div>
 
-          <nav className="flex items-center space-x-7 text-sm sm:text-base font-semibold text-[#485E40]">
+          <nav className="hidden md:flex items-center space-x-7 text-sm sm:text-base font-semibold text-[#485E40]">
             <button 
               onClick={() => scrollToSection('overview')}
               className="hover:text-[#1B3826] transition-colors"
@@ -207,7 +212,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                         {(totalActiveWatts / 1000).toFixed(2)} kW
                       </div>
                       <div className="text-xs text-[#697C63] mt-0.5">
-                        Baseline idle: 0.85 kW
+                        Baseline idle: {baselineKw} kW
                       </div>
                     </div>
 
@@ -248,7 +253,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                             {activeLeakBlock.leakDescription || 'Idle equipment left on post-schedule.'}
                           </p>
                           <p className="text-xs font-mono text-[#9A6214] mt-1">
-                            Estimated avoidable cost: ₹{activeLeakBlock.wastedCostPerHourInr}/hr
+                            Estimated avoidable cost: ~₹{Number(activeLeakBlock.wastedCostPerHourInr).toFixed(2)}/hr
                           </p>
                         </div>
                         <button
@@ -262,7 +267,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                           disabled={resolvingId === activeLeakBlock.id}
                           className="px-3 py-1.5 rounded-lg bg-[#874D00] hover:bg-[#6D3E00] text-white font-medium text-xs shrink-0 transition-colors shadow-xs"
                         >
-                          {resolvingId === activeLeakBlock.id ? 'Resolving...' : 'Simulate Fix'}
+                          {resolvingId === activeLeakBlock.id ? 'Resolving...' : 'Resolve · +50 pts'}
                         </button>
                       </div>
                     </div>

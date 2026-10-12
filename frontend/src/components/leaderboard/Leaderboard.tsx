@@ -83,7 +83,7 @@ export const Leaderboard: React.FC = () => {
 
         {/* Standings List */}
         <div className="bg-white border border-[#D8E4D2] rounded-2xl overflow-hidden shadow-2xs">
-          <div className="px-5 py-3.5 border-b border-[#EDF0E9] flex items-center justify-between text-xs text-[#8E9789] font-medium">
+          <div className="px-4 sm:px-5 py-3 sm:py-3.5 border-b border-[#EDF0E9] flex items-center justify-between text-xs text-[#8E9789] font-medium">
             <span>Department & Block</span>
             <div className="flex items-center gap-6">
               <span className="hidden sm:inline">Energy Prevented</span>
@@ -99,12 +99,12 @@ export const Leaderboard: React.FC = () => {
               return (
                 <div
                   key={dept.code}
-                  className={`px-5 py-3.5 flex items-center justify-between transition-colors ${
+                  className={`px-4 sm:px-5 py-3 sm:py-3.5 flex items-center justify-between transition-colors ${
                     isFirst ? 'bg-[#F2F7F0]/60' : 'hover:bg-[#FAF8F5]'
                   }`}
                 >
                   {/* Left: Rank + Department */}
-                  <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="flex items-center gap-3 sm:gap-3.5 min-w-0 pr-2">
                     <span
                       className={`w-7 h-7 rounded-lg flex items-center justify-center font-mono font-bold text-xs shrink-0 ${
                         isFirst
@@ -116,23 +116,29 @@ export const Leaderboard: React.FC = () => {
                     </span>
 
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-sm text-[#191C1A] truncate">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-semibold text-xs sm:text-sm text-[#191C1A] leading-snug break-words">
                           {dept.department}
                         </span>
                         {isFirst && (
-                          <span className="hidden md:inline-flex items-center gap-1 text-[11px] font-semibold text-[#166534] bg-[#F0FDF4] border border-[#BBF7D0] px-2 py-0.5 rounded-full">
-                            <Leaf className="w-3 h-3" />
+                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#166534] bg-[#F0FDF4] border border-[#BBF7D0] px-1.5 py-0.5 rounded-full shrink-0">
+                            <Leaf className="w-2.5 h-2.5" />
                             Leading
                           </span>
                         )}
                       </div>
-                      <span className="text-xs text-[#8E9789] font-mono">{dept.code}</span>
+                      <div className="flex items-center gap-2 mt-0.5 text-xs text-[#8E9789] font-mono">
+                        <span>{dept.code}</span>
+                        {/* Mobile secondary impact metric */}
+                        <span className="sm:hidden text-[#486340] font-sans font-medium">
+                          · {dept.kwhSaved} kWh curbed
+                        </span>
+                      </div>
                     </div>
                   </div>
 
                   {/* Right: Metrics */}
-                  <div className="flex items-center gap-6 shrink-0">
+                  <div className="flex items-center gap-4 sm:gap-6 shrink-0">
                     <div className="hidden sm:flex flex-col items-end text-right font-mono text-xs">
                       <span className="font-bold text-[#191C1A]">{dept.kwhSaved} kWh</span>
                       <span className="text-[11px] text-[#8E9789]">curbed</span>
@@ -144,7 +150,7 @@ export const Leaderboard: React.FC = () => {
                     </div>
 
                     <div className="text-right font-mono">
-                      <span className="text-base font-bold text-[#1B3826] block">
+                      <span className="text-sm sm:text-base font-bold text-[#1B3826] block whitespace-nowrap">
                         {dept.greenCredits.toLocaleString()} pts
                       </span>
                     </div>
@@ -182,9 +188,9 @@ export const Leaderboard: React.FC = () => {
 
         {/* Ledger List */}
         <div className="bg-white border border-[#D8E4D2] rounded-2xl overflow-hidden shadow-2xs">
-          <div className="px-5 py-3 border-b border-[#EDF0E9] flex items-center justify-between text-xs text-[#8E9789]">
-            <span>Click any record to inspect logged assumptions</span>
-            <span>{auditLogs.length} total events</span>
+          <div className="px-4 sm:px-5 py-3 border-b border-[#EDF0E9] flex items-center justify-between text-xs text-[#8E9789]">
+            <span>Tap any record to inspect logged assumptions</span>
+            <span>{auditLogs.length} events</span>
           </div>
 
           <div className="divide-y divide-[#EDF0E9]">
@@ -197,13 +203,13 @@ export const Leaderboard: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setSelectedLogId(isSelected ? null : log.id)}
-                    className={`w-full text-left px-5 py-3.5 flex items-center justify-between transition-colors ${
+                    className={`w-full text-left px-4 sm:px-5 py-3 sm:py-3.5 flex items-start sm:items-center justify-between gap-2 transition-colors cursor-pointer touch-manipulation min-h-[48px] focus:outline-none focus:ring-2 focus:ring-[#1B3826] ${
                       isSelected ? 'bg-[#F2F7F0]' : 'hover:bg-[#FAF8F5]'
                     }`}
                   >
-                    <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex items-start sm:items-center gap-2.5 sm:gap-3 min-w-0">
                       {/* Icon */}
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 sm:mt-0 ${
                         log.type === 'FOOD_AUDIT'
                           ? 'bg-[#EBF5FB] text-[#0284C7]'
                           : 'bg-[#FAF3E0] text-[#B45309]'
@@ -216,12 +222,12 @@ export const Leaderboard: React.FC = () => {
                       </div>
 
                       <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-xs text-[#191C1A] truncate">
+                        {/* Context + Seeded Tag */}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-semibold text-xs text-[#191C1A]">
                             {log.blockName}
                           </span>
-                          {/* Seeded vs Session Tag */}
-                          <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded font-medium ${
+                          <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded font-medium shrink-0 ${
                             isSessionEvent
                               ? 'bg-[#F0FDF4] text-[#166534] border border-[#BBF7D0]'
                               : 'bg-[#F5F7F0] text-[#8E9789] border border-[#E0E8DA]'
@@ -229,15 +235,26 @@ export const Leaderboard: React.FC = () => {
                             {isSessionEvent ? 'Live Session' : 'Seeded'}
                           </span>
                         </div>
-                        <p className="text-xs text-[#6B7B68] truncate mt-0.5">
+
+                        {/* Action description - wrap naturally */}
+                        <p className="text-xs text-[#6B7B68] leading-tight mt-0.5">
                           {log.action}
                         </p>
+
+                        {/* Mobile attribution & impact subtitle */}
+                        <div className="sm:hidden flex items-center gap-2 mt-1 text-[11px] text-[#8E9789]">
+                          <span className="truncate">{log.department}</span>
+                          <span>·</span>
+                          <span className="text-[#166534] font-medium font-mono shrink-0">
+                            {log.kwhPrevented ? `${log.kwhPrevented} kWh curbed` : `₹${log.costSavedInr}`}
+                          </span>
+                        </div>
                       </div>
                     </div>
 
                     {/* Right: Credits & Toggle */}
-                    <div className="flex items-center gap-4 shrink-0 font-mono text-xs">
-                      <span className="font-bold text-[#1B3826]">
+                    <div className="flex items-center gap-2.5 sm:gap-4 shrink-0 font-mono text-xs pt-0.5 sm:pt-0">
+                      <span className="font-bold text-[#1B3826] whitespace-nowrap">
                         +{log.creditsAwarded} pts
                       </span>
                       {isSelected ? (
@@ -250,15 +267,15 @@ export const Leaderboard: React.FC = () => {
 
                   {/* Expandable Details Panel */}
                   {isSelected && (
-                    <div className="px-5 py-3.5 bg-[#FAF8F5] border-t border-[#EDF0E9] text-xs text-[#6B7B68] space-y-2">
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono text-[11px]">
+                    <div className="px-4 sm:px-5 py-3.5 bg-[#FAF8F5] border-t border-[#EDF0E9] text-xs text-[#6B7B68] space-y-2">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 font-mono text-[11px]">
                         <div>
                           <span className="text-[#8E9789] block">Department</span>
-                          <span className="font-semibold text-[#191C1A]">{log.department}</span>
+                          <span className="font-semibold text-[#191C1A] break-words">{log.department}</span>
                         </div>
                         <div>
                           <span className="text-[#8E9789] block">Attributed To</span>
-                          <span className="font-semibold text-[#191C1A]">{log.resolvedBy}</span>
+                          <span className="font-semibold text-[#191C1A] break-words">{log.resolvedBy}</span>
                         </div>
                         <div>
                           <span className="text-[#8E9789] block">Timestamp</span>

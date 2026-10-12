@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Utensils, CloudRain, Sun, Calendar, TrendingDown, 
   IndianRupee, Leaf, Flame, AlertCircle, CheckCircle2,
-  Package, Info, RefreshCw, Users
+  Package, Info, RefreshCw, Users, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { API_ENDPOINTS } from '../../config/api';
 
@@ -36,6 +36,7 @@ export const MessPredictor: React.FC = () => {
   const [forecast, setForecast] = useState<MessForecastData | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [showMethodology, setShowMethodology] = useState<boolean>(false);
 
   const fetchForecast = async () => {
     setLoading(true);
@@ -97,7 +98,7 @@ export const MessPredictor: React.FC = () => {
       </div>
 
       {/* ── Section B: Forecast Inputs ────────────────────────────────────── */}
-      <div className="bg-white border border-[#D8E4D2] rounded-2xl p-5 shadow-2xs space-y-4">
+      <div className="bg-white border border-[#D8E4D2] rounded-2xl p-4 sm:p-5 shadow-2xs space-y-4">
         <div>
           <h3 className="text-sm font-semibold text-[#191C1A]">Forecast Parameters</h3>
           <p className="text-xs text-[#8E9789] mt-0.5">
@@ -115,7 +116,7 @@ export const MessPredictor: React.FC = () => {
             <select
               value={day}
               onChange={(e) => setDay(e.target.value)}
-              className="w-full bg-[#FAF8F5] border border-[#D8E4D2] rounded-xl px-3 py-2 text-xs text-[#191C1A] font-medium focus:outline-none focus:border-[#1B3826] transition cursor-pointer"
+              className="w-full bg-[#FAF8F5] border border-[#D8E4D2] rounded-xl px-3 py-2.5 min-h-[44px] text-xs text-[#191C1A] font-medium focus:outline-none focus:border-[#1B3826] transition cursor-pointer touch-manipulation"
             >
               <option value="Monday">Monday (~92% Turnout)</option>
               <option value="Tuesday">Tuesday (~90% Turnout)</option>
@@ -137,7 +138,7 @@ export const MessPredictor: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setWeather('Sunny')}
-                className={`py-2 px-3 rounded-xl text-xs font-medium border transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                className={`min-h-[44px] py-2.5 px-3 rounded-xl text-xs font-medium border transition flex items-center justify-center gap-1.5 cursor-pointer touch-manipulation focus:outline-none focus:ring-2 focus:ring-[#1B3826] ${
                   weather === 'Sunny'
                     ? 'bg-[#1B3826] border-[#1B3826] text-white shadow-2xs'
                     : 'bg-[#FAF8F5] border-[#D8E4D2] text-[#486340] hover:bg-[#F2F7F0]'
@@ -149,7 +150,7 @@ export const MessPredictor: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setWeather('Rainy')}
-                className={`py-2 px-3 rounded-xl text-xs font-medium border transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                className={`min-h-[44px] py-2.5 px-3 rounded-xl text-xs font-medium border transition flex items-center justify-center gap-1.5 cursor-pointer touch-manipulation focus:outline-none focus:ring-2 focus:ring-[#1B3826] ${
                   weather === 'Rainy'
                     ? 'bg-[#1B3826] border-[#1B3826] text-white shadow-2xs'
                     : 'bg-[#FAF8F5] border-[#D8E4D2] text-[#486340] hover:bg-[#F2F7F0]'
@@ -169,7 +170,7 @@ export const MessPredictor: React.FC = () => {
             <button
               type="button"
               onClick={() => setIsExam(!isExam)}
-              className={`w-full py-2 px-3 rounded-xl text-xs font-medium border transition flex items-center justify-between cursor-pointer ${
+              className={`w-full min-h-[44px] py-2.5 px-3.5 rounded-xl text-xs font-medium border transition flex items-center justify-between cursor-pointer touch-manipulation focus:outline-none focus:ring-2 focus:ring-[#1B3826] ${
                 isExam
                   ? 'bg-[#1B3826] border-[#1B3826] text-white shadow-2xs'
                   : 'bg-[#FAF8F5] border-[#D8E4D2] text-[#486340] hover:bg-[#F2F7F0]'
@@ -199,16 +200,16 @@ export const MessPredictor: React.FC = () => {
         <div className="space-y-6">
 
           {/* Expected Demand Banner */}
-          <div className="bg-white border border-[#D8E4D2] rounded-2xl p-5 shadow-2xs">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="bg-white border border-[#D8E4D2] rounded-2xl p-4 sm:p-5 shadow-2xs">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
               <div>
                 <span className="text-xs text-[#8E9789] uppercase tracking-wider block">
                   Projected Diners
                 </span>
                 <p className="text-3xl font-mono font-bold text-[#191C1A] mt-0.5">
                   {forecast.expectedDiners}
-                  <span className="text-sm font-normal text-[#8E9789] ml-2">
-                    students ({Math.round((forecast.expectedDiners / forecast.totalHostelStudents) * 100)}% of 1,200)
+                  <span className="text-sm font-normal text-[#8E9789] ml-2 block xs:inline">
+                    students ({Math.round((forecast.expectedDiners / forecast.totalHostelStudents) * 100)}% of 1,200 enrolled)
                   </span>
                 </p>
                 <p className="text-xs text-[#6B7B68] mt-2 leading-relaxed">
@@ -216,28 +217,28 @@ export const MessPredictor: React.FC = () => {
                 </p>
               </div>
 
-              <div className="text-xs text-[#8E9789] bg-[#FAF8F5] border border-[#E0E8DA] p-3 rounded-xl max-w-xs shrink-0">
-                <span className="font-semibold text-[#191C1A] block mb-0.5">Rule-Based Estimation</span>
+              <div className="text-xs text-[#8E9789] bg-[#FAF8F5] border border-[#E0E8DA] p-3 rounded-xl max-w-xs shrink-0 self-start">
+                <span className="font-semibold text-[#191C1A] block mb-0.5">Demand Model</span>
                 <span>Calibrated from historical weekend decay rates and weather attendance adjustments.</span>
               </div>
             </div>
           </div>
 
           {/* Preparation Recommendation Comparison */}
-          <div className="bg-white border border-[#D8E4D2] rounded-2xl p-5 shadow-2xs space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-[#EDF0E9]">
+          <div className="bg-white border border-[#D8E4D2] rounded-2xl p-4 sm:p-5 shadow-2xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#EDF0E9]">
               <div>
                 <h3 className="text-sm font-semibold text-[#191C1A]">Kitchen Preparation Calibration</h3>
                 <p className="text-xs text-[#8E9789] mt-0.5">
                   Comparing blind full-capacity preparation against demand-matched recommendation.
                 </p>
               </div>
-              <span className="text-xs font-mono font-bold text-[#166534] bg-[#F0FDF4] border border-[#BBF7D0] px-2.5 py-1 rounded-lg">
+              <span className="text-xs font-mono font-bold text-[#166534] bg-[#F0FDF4] border border-[#BBF7D0] px-2.5 py-1 rounded-lg self-start sm:self-auto shrink-0">
                 {forecast.savedFoodKg} kg Overproduction Avoided
               </span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
               {/* Conventional Blind Prep */}
               <div className="p-4 rounded-xl bg-[#FAF8F5] border border-[#E0E8DA]">
                 <span className="text-xs text-[#8E9789] uppercase tracking-wider block mb-1">
@@ -279,35 +280,50 @@ export const MessPredictor: React.FC = () => {
             </div>
 
             {/* Impact Strip */}
-            <div className="pt-3 border-t border-[#EDF0E9] grid grid-cols-3 gap-3 text-center">
-              <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#E0E8DA]">
-                <span className="text-xs text-[#8E9789] block">Food Waste Avoided</span>
-                <span className="text-lg font-mono font-bold text-[#191C1A] mt-0.5 block">
-                  {forecast.savedFoodKg} kg
-                </span>
-                <span className="text-[11px] text-[#8E9789]">raw food saved</span>
+            <div className="pt-3 border-t border-[#EDF0E9] grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3 text-center">
+              <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#E0E8DA] flex sm:flex-col items-center justify-between sm:justify-center text-left sm:text-center">
+                <div>
+                  <span className="text-xs text-[#8E9789] block">Food Waste Avoided</span>
+                  <span className="text-[11px] text-[#8E9789] hidden sm:block">raw food saved</span>
+                </div>
+                <div className="text-right sm:text-center">
+                  <span className="text-base sm:text-lg font-mono font-bold text-[#191C1A] block">
+                    {forecast.savedFoodKg} kg
+                  </span>
+                  <span className="text-[10px] text-[#8E9789] sm:hidden">raw food saved</span>
+                </div>
               </div>
 
-              <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#E0E8DA]">
-                <span className="text-xs text-[#8E9789] block">Budget Impact</span>
-                <span className="text-lg font-mono font-bold text-[#166534] mt-0.5 block">
-                  ₹{forecast.costSavedInr.toLocaleString()}
-                </span>
-                <span className="text-[11px] text-[#8E9789]">at ₹85/kg food cost</span>
+              <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#E0E8DA] flex sm:flex-col items-center justify-between sm:justify-center text-left sm:text-center">
+                <div>
+                  <span className="text-xs text-[#8E9789] block">Budget Impact</span>
+                  <span className="text-[11px] text-[#8E9789] hidden sm:block">at ₹85/kg food cost</span>
+                </div>
+                <div className="text-right sm:text-center">
+                  <span className="text-base sm:text-lg font-mono font-bold text-[#166534] block">
+                    ₹{forecast.costSavedInr.toLocaleString()}
+                  </span>
+                  <span className="text-[10px] text-[#8E9789] sm:hidden">at ₹85/kg cost</span>
+                </div>
               </div>
 
-              <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#E0E8DA]">
-                <span className="text-xs text-[#8E9789] block">Embodied CO₂e</span>
-                <span className="text-lg font-mono font-bold text-[#191C1A] mt-0.5 block">
-                  {forecast.co2eSavedKg} kg
-                </span>
-                <span className="text-[11px] text-[#8E9789]">emissions prevented</span>
+              <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#E0E8DA] flex sm:flex-col items-center justify-between sm:justify-center text-left sm:text-center">
+                <div>
+                  <span className="text-xs text-[#8E9789] block">Embodied CO₂e</span>
+                  <span className="text-[11px] text-[#8E9789] hidden sm:block">emissions prevented</span>
+                </div>
+                <div className="text-right sm:text-center">
+                  <span className="text-base sm:text-lg font-mono font-bold text-[#191C1A] block">
+                    {forecast.co2eSavedKg} kg
+                  </span>
+                  <span className="text-[10px] text-[#8E9789] sm:hidden">emissions prevented</span>
+                </div>
               </div>
             </div>
           </div>
 
           {/* Recipe Bill of Materials (BOM) */}
-          <div className="bg-white border border-[#D8E4D2] rounded-2xl p-5 shadow-2xs space-y-4">
+          <div className="bg-white border border-[#D8E4D2] rounded-2xl p-4 sm:p-5 shadow-2xs space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-[#EDF0E9]">
               <div>
                 <h3 className="text-sm font-semibold text-[#191C1A]">Kitchen Ingredient Requirements</h3>
@@ -315,13 +331,35 @@ export const MessPredictor: React.FC = () => {
                   Raw ingredient dispatch breakdown for {forecast.expectedDiners} projected diners.
                 </p>
               </div>
-              <span className="text-xs text-[#8E9789] flex items-center gap-1">
+              <span className="text-xs text-[#8E9789] flex items-center gap-1 shrink-0">
                 <Package className="w-3.5 h-3.5" />
-                Standard Portions
+                <span className="hidden xs:inline">Standard Portions</span>
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+            {/* Mobile View: Readable Vertical List with Names on Left and Quantities on Right */}
+            <div className="sm:hidden divide-y divide-[#EDF0E9] border border-[#E0E8DA] rounded-xl overflow-hidden bg-[#FAF8F5]">
+              {[
+                { name: 'Basmati Rice', qty: `${forecast.bom.grainRiceKg} kg`, norm: '120g / diner' },
+                { name: 'Dal & Pulses', qty: `${forecast.bom.dalPulsesKg} kg`, norm: '50g / diner' },
+                { name: 'Wheat Atta (Roti)', qty: `${forecast.bom.wheatFlourAttaKg} kg`, norm: '90g / diner' },
+                { name: 'Fresh Vegetables', qty: `${forecast.bom.freshVegetablesKg} kg`, norm: '140g / diner' },
+                { name: 'Cooking Oil', qty: `${forecast.bom.cookingOilLiters} L`, norm: '20ml / diner' },
+              ].map((item) => (
+                <div key={item.name} className="px-3.5 py-2.5 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <span className="text-xs font-semibold text-[#191C1A] block truncate">{item.name}</span>
+                    <span className="text-[11px] text-[#8E9789]">{item.norm}</span>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <span className="text-sm font-mono font-bold text-[#191C1A]">{item.qty}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Tablet & Desktop View: 5-column grid */}
+            <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-5 gap-3">
               <div className="p-3.5 rounded-xl bg-[#FAF8F5] border border-[#E0E8DA]">
                 <span className="text-xs text-[#8E9789] block">Basmati Rice</span>
                 <span className="text-base font-mono font-bold text-[#191C1A] mt-0.5 block">
@@ -363,9 +401,50 @@ export const MessPredictor: React.FC = () => {
               </div>
             </div>
 
-            <p className="text-[11px] text-[#8E9789] pt-2">
+            <p className="text-[11px] text-[#8E9789] pt-1">
               Note: Quantities are rule-based estimates derived from standard institutional catering norms (380g cooked meal per diner).
             </p>
+          </div>
+
+          {/* ── Section F: Collapsible Methodology & Assumptions Accordion ──────── */}
+          <div className="bg-white border border-[#D8E4D2] rounded-2xl overflow-hidden shadow-2xs">
+            <button
+              type="button"
+              onClick={() => setShowMethodology(v => !v)}
+              className="w-full px-4 sm:px-5 py-3.5 min-h-[44px] flex items-center justify-between text-left hover:bg-[#F9F7F2] transition cursor-pointer touch-manipulation focus:outline-none focus:ring-2 focus:ring-[#1B3826]"
+            >
+              <div className="flex items-center gap-2 text-xs font-semibold text-[#486340]">
+                <Info className="w-4 h-4 shrink-0" />
+                <span>How is this predicted? (Methodology & Serving Standards)</span>
+              </div>
+              {showMethodology ? <ChevronUp className="w-4 h-4 text-[#8E9789] shrink-0" /> : <ChevronDown className="w-4 h-4 text-[#8E9789] shrink-0" />}
+            </button>
+
+            {showMethodology && (
+              <div className="px-4 sm:px-5 pb-5 pt-1 space-y-4 border-t border-[#EDF0E9] text-xs text-[#6B7B68] leading-relaxed">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                  <div className="p-3.5 rounded-xl bg-[#FAF8F5] border border-[#E0E8DA] space-y-1.5">
+                    <p className="font-semibold text-[#191C1A]">Demand Estimation Norms</p>
+                    <p>• Baseline Capacity: 1,200 registered hostel students on central meal plans.</p>
+                    <p>• Weekend Attendance Factor: Attendance drops to 62–70% on Friday–Sunday due to home visits.</p>
+                    <p>• Weather Adjustment: Heavy rain adds ~6% retention as off-campus dining reduces.</p>
+                    <p>• Exam Surge: Mid-term examination schedules concentrate ~8% additional students in campus dining.</p>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-[#FAF8F5] border border-[#E0E8DA] space-y-1.5">
+                    <p className="font-semibold text-[#191C1A]">Kitchen Safety Buffer & Calculations</p>
+                    <p>• Standard Thali Serving: 380 grams total cooked food per attendee.</p>
+                    <p>• Buffer Factor: A 5% dynamic buffer is added over projected diners to prevent kitchen shortages.</p>
+                    <p>• Food Cost Benchmark: ₹85.00 per kilogram of raw ingredient dispatch.</p>
+                    <p>• Emissions Factor: 2.5 kg CO₂e avoided per kilogram of overproduction prevented.</p>
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-[#8E9789]">
+                  Disclaimer: Demand forecasts are simulated decision-support aids based on institutional dining decay curves. Kitchen supervisors should inspect batch tickets before dispatch.
+                </p>
+              </div>
+            )}
           </div>
 
         </div>

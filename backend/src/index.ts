@@ -1,6 +1,13 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import cors from 'cors';
 import { CampusEnergySimulator } from './simulator/energySimulator.js';
+import {
+  analyzeFoodPlateImage,
+  getCalibratedPresetAudit,
+} from './services/geminiVision.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -28,55 +35,104 @@ let departmentLeaderboard: DepartmentScore[] = [
   { rank: 5, department: 'Central Hostel Dining Council', code: 'HOSTEL', greenCredits: 2710, kwhSaved: 170, auditsCompleted: 35 },
 ];
 
-// 1. Campus Status & NILM Telemetry
-// Single snapshot per request — getStatus() adds random jitter on every call,
-// so deriving totals from separate calls produces contradictory readings.
-app.get('/api/campus-status', (_req, res) => {
-  const snapshot = simulator.getStatus();
-  res.json({
-    timestamp: new Date().toISOString(),
-    blocks: snapshot,
-    totalActiveWatts: snapshot.reduce((sum, b) => sum + b.activePowerWatts, 0),
-    activeGhostLeaksCount: snapshot.filter((b) => b.hasGhostLeak).length,
-    campusTotalPowerFactor: 0.96,
+// Helper: Match building department to leaderboard score entry
+export function findLeaderboardDepartment(deptName: string, leaderboard: DepartmentScore[]): DepartmentScore | undefined {
+  const norm = deptName.toLowerCase();
+
+  // 1. High-precision department keyword matching
+  if (norm.includes('mba') || norm.includes('management')) {
+    return leaderboard.find((d) => d.code === 'MBA');
+  }
+  if (norm.includes('computer') || norm.includes('cse')) {
+    return leaderboard.find((d) => d.code === 'CSE');
+  }
+  if (norm.includes('mechanical') || norm.includes('mech')) {
+    return leaderboard.find((d) => d.code === 'ME');
+  }
+  if (norm.includes('information') || norm.includes('analytics')) {
+    return leaderboard.find((d) => d.code === 'IT');
+  }
+  if (norm.includes('hostel') || norm.includes('dining') || norm.includes('mess')) {
+    return leaderboard.find((d) => d.code === 'HOSTEL');
+  }
+
+  // 2. Direct full-name inclusion fallback
+  return leaderboard.find((d) => {
+    const dName = d.department.toLowerCase();
+    return dName.includes(norm) || norm.includes(dName);
   });
+}
+
+// 1. Campus Status & NILM Telemetry
+// Single snapshot per request derived in a single pass from the simulator source of truth.
+app.get('/api/campus-status', (_req, res) => {
+  const snapshot = simulator.getSnapshot();
+  res.json(snapshot);
 });
 
 // 2. Resolve Leak Endpoint (Remote load cut-off simulation)
 app.post('/api/resolve-leak', (req, res) => {
-  const { blockId } = req.body;
-  if (!blockId) {
-    res.status(400).json({ error: 'blockId is required' });
+  const { blockId, resolvedBy = 'Campus EcoPulse User' } = req.body;
+  if (!blockId || typeof blockId !== 'string') {
+    res.status(400).json({ 
+      success: false, 
+      error: 'blockId is required and must be a string' 
+    });
     return;
   }
-  const result = simulator.resolveLeak(blockId);
-  if (result.success && result.log) {
-    // Correctly attribute credits to the block's actual department
-    const blockDept = result.log.department.toLowerCase();
-    const dept = departmentLeaderboard.find((d) => 
-      d.department.toLowerCase().includes(blockDept) ||
-      blockDept.includes(d.code.toLowerCase())
-    ) || departmentLeaderboard[0];
 
+  const result = simulator.resolveLeak(blockId, resolvedBy);
+  if (!result.success) {
+    if (result.reason === 'BLOCK_NOT_FOUND') {
+      res.status(404).json({
+        success: false,
+        error: `Building with ID "${blockId}" not found in campus inventory.`,
+      });
+      return;
+    }
+    // Already resolved or no leak
+    res.status(409).json({
+      success: false,
+      error: `Building "${blockId}" has no active simulated leak or was already resolved.`,
+    });
+    return;
+  }
+
+  // Credit 50 points to the building's exact department in leaderboard
+  if (result.resolution && result.log) {
+    const dept = findLeaderboardDepartment(result.resolution.department, departmentLeaderboard) || departmentLeaderboard[0];
     if (dept) {
-      dept.greenCredits += 50;
-      dept.kwhSaved += Math.round(result.log.kwhPrevented || 4);
+      dept.greenCredits += result.resolution.pointsAwarded;
+      dept.kwhSaved += Math.round(result.resolution.estimatedEnergyAvoidedKWh);
       departmentLeaderboard.sort((a, b) => b.greenCredits - a.greenCredits);
       departmentLeaderboard.forEach((d, idx) => (d.rank = idx + 1));
     }
   }
-  res.json({
-    success: result.success,
-    message: result.success ? 'Simulated leak resolved & load returned to baseline.' : 'Leak not found or already resolved.',
+
+  res.status(200).json({
+    success: true,
+    message: 'Simulated leak resolved & load returned to baseline.',
+    resolution: result.resolution,
     log: result.log,
   });
 });
 
 // 3. Trigger Demo Leak (For Live Hackathon Demos)
 app.post('/api/trigger-demo-leak', (req, res) => {
-  const { blockId = 'svvv-blk-a-cs-lab-2' } = req.body;
-  const success = simulator.triggerDemoLeak(blockId);
-  res.json({ success, message: 'Simulated Ghost Leak triggered for demonstration.' });
+  const { blockId = 'main-blk-fl2-r204' } = req.body;
+  const result = simulator.triggerDemoLeak(blockId);
+  if (!result.success) {
+    res.status(404).json({ 
+      success: false, 
+      error: `Building "${blockId}" not found in campus inventory.` 
+    });
+    return;
+  }
+  res.status(200).json({ 
+    success: true, 
+    message: `Simulated Ghost Leak triggered in ${result.block?.name || blockId} for demonstration.`,
+    block: result.block 
+  });
 });
 
 // 4. 24-Hour Telemetry History
@@ -154,146 +210,167 @@ app.get('/api/mess-forecast', (req, res) => {
   });
 });
 
-// 8. Food Waste Audit (Calibrated Plate Preset & Inspection Simulation)
-app.post('/api/scan-plate', (req, res) => {
-  const { imageBase64, isWebcam = false, simulatedPlateType = 'NORMAL_TRAY', department = 'Central Hostel Dining Council' } = req.body;
+// 8. Food Waste Audit (Real Gemini Vision Image Analysis & Calibrated Simulation)
+app.post('/api/scan-plate', async (req, res) => {
+  const {
+    imageBase64,
+    mimeType = 'image/jpeg',
+    originalServingWeightGrams,
+    simulatedPlateType = 'NORMAL_TRAY',
+    mode,
+    department = 'Central Hostel Dining Council',
+    submissionId,
+  } = req.body;
 
-  // Real Camera Image Validation:
-  // If user turned on camera, verify frame has illumination and content
-  if (isWebcam && imageBase64) {
+  // Department resolution
+  const targetDept = findLeaderboardDepartment(department, departmentLeaderboard)
+    || departmentLeaderboard.find((d) => d.code === 'HOSTEL')
+    || departmentLeaderboard[0];
+
+  const hasImage = typeof imageBase64 === 'string' && imageBase64.trim().length > 0;
+
+  // Case A: Real Image Upload via Gemini Vision
+  if (hasImage && mode !== 'PRESET') {
     try {
-      const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
-      const buffer = Buffer.from(base64Data, 'base64');
-      
-      if (buffer.length < 5000) {
-        res.status(400).json({
+      const cleanBase64 = imageBase64.replace(/^data:image\/[a-zA-Z0-9.+_-]+;base64,/, '').trim();
+      const imageBuffer = Buffer.from(cleanBase64, 'base64');
+
+      const result = await analyzeFoodPlateImage({
+        imageBuffer,
+        mimeType,
+        originalServingWeightGrams: typeof originalServingWeightGrams === 'number' && originalServingWeightGrams > 0 ? originalServingWeightGrams : null,
+        submissionId,
+        department,
+      });
+
+      if (!result.success || !result.analysis) {
+        const httpStatus = result.code === 'MISSING_API_KEY' ? 503 : result.code === 'NOT_FOOD_IMAGE' ? 422 : 400;
+        res.status(httpStatus).json({
           status: 'error',
-          error: 'Camera frame underexposed or blurred. Please hold tray steady.',
+          error: result.error || 'Failed to analyze food plate image.',
+          code: result.code || 'UNKNOWN_ERROR',
         });
         return;
       }
 
-      let warmFoodBytes = 0;
-      let coolRoomBytes = 0;
-      const step = Math.max(1, Math.floor(buffer.length / 5000));
-      for (let i = 0; i < buffer.length; i += step * 3) {
-        const r = buffer[i] || 0;
-        const g = buffer[i + 1] || 0;
-        const b = buffer[i + 2] || 0;
-        
-        if (r > b + 25 && g > b) {
-          warmFoodBytes++;
-        } else if (b > r + 15 || (r < 60 && g < 60 && b < 60)) {
-          coolRoomBytes++;
-        }
-      }
+      const { analysis } = result;
 
-      const warmFoodRatio = warmFoodBytes / (warmFoodBytes + coolRoomBytes + 1);
+      // Award +5 participation points only if this submission was not already rewarded
+      if (!analysis.isDuplicate && targetDept) {
+        targetDept.greenCredits += analysis.greenCreditsEarned;
+        targetDept.auditsCompleted = (targetDept.auditsCompleted || 0) + 1;
+        departmentLeaderboard.sort((a, b) => b.greenCredits - a.greenCredits);
+        departmentLeaderboard.forEach((d, idx) => (d.rank = idx + 1));
 
-      if (warmFoodRatio < 0.22) {
-        res.json({
-          status: 'error',
-          error: 'No food plate detected in frame. Point camera at food tray or use calibrated preset.',
-          recommendation: 'Place a dining tray or food plate within the camera view.',
+        // Record audit entry
+        simulator.addAuditLog({
+          id: `audit-${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          blockId: 'central-hostel-mess',
+          blockName: 'Central Hostel Dining Hall',
+          action: `AI Photo Audit: ${analysis.visibleFoodItems.slice(0, 3).join(', ') || 'Leftover remnants'} (~${analysis.remainingPortionPercent}% remaining portion estimate).`,
+          resolvedBy: 'Food Waste Audit User',
+          department: targetDept.department.split(' (')[0],
+          costSavedInr: 0,
+          creditsAwarded: analysis.greenCreditsEarned,
+          isSeeded: false,
+          type: 'FOOD_AUDIT',
         });
-        return;
       }
-    } catch (e) {
-      console.warn('Frame inspection warning:', e);
+
+      res.status(200).json({
+        status: 'success',
+        timestamp: new Date().toISOString(),
+        audit: {
+          isFoodImage: analysis.isFoodImage,
+          visibleFoodItems: analysis.visibleFoodItems,
+          remainingPortionPercent: analysis.remainingPortionPercent,
+          estimatedLeftoverWeightGrams: analysis.estimatedLeftoverWeightGrams,
+          servingWeightAssumption: analysis.servingWeightAssumption,
+          visualObservations: analysis.visualObservations,
+          uncertainty: analysis.uncertainty,
+          limitations: analysis.limitations,
+          greenCreditsEarned: analysis.greenCreditsEarned,
+          isDuplicate: analysis.isDuplicate,
+          source: analysis.source,
+          department: targetDept.department.split(' (')[0],
+          // Backwards-compatible fields for UI
+          standardMealWeightGrams: originalServingWeightGrams || 380,
+          estimatedFoodWastedGrams: analysis.estimatedLeftoverWeightGrams || 0,
+          leftoverPercentage: analysis.remainingPortionPercent,
+          foodRemnantClass: analysis.visibleFoodItems.join(', ') || 'Mixed food leftovers',
+        },
+        recommendation:
+          analysis.remainingPortionPercent <= 10
+            ? 'Excellent plate clearance. Negligible leftovers remaining.'
+            : analysis.remainingPortionPercent <= 25
+            ? 'Minor leftovers visible. Consider requesting smaller initial helpings at the counter.'
+            : 'Substantial unfinished portion visible. Asking for customized portions helps curtail mess waste.',
+      });
+      return;
+    } catch (err: any) {
+      console.error('Unhandled scan-plate error:', err);
+      res.status(500).json({
+        status: 'error',
+        error: 'Internal server error while processing image audit.',
+        code: 'INTERNAL_ERROR',
+      });
+      return;
     }
   }
 
-  // Calibrated Plate Preset Estimation
-  let leftoverPct: number;
-  let foodCategory: string;
-
-  if (simulatedPlateType === 'HEAVY_WASTE') {
-    leftoverPct = 42; // ~42% leftover
-    foodCategory = 'Rice + Dal + Roti remnants';
-  } else if (simulatedPlateType === 'CLEAN_TRAY') {
-    leftoverPct = 5; // ~5% leftover (minimal remnants)
-    foodCategory = 'Negligible remnants';
-  } else {
-    leftoverPct = 24; // ~24% leftover
-    foodCategory = 'Rice portion + Gravy surplus';
-  }
-
-  const standardMealWeightGrams = 380.0;
-  const wastedGrams = Number(((leftoverPct / 100.0) * standardMealWeightGrams).toFixed(1));
-  const consumedGrams = Number((standardMealWeightGrams - wastedGrams).toFixed(1));
-  const co2eEmittedKg = Number(((wastedGrams / 1000.0) * 2.5).toFixed(2)); // IPCC standard 2.5 kg CO2e / kg food waste
-  const virtualWaterWastedLiters = Math.round((wastedGrams / 1000.0) * 1200); // ~1,200 L / kg grain/pulse mix
-  const financialLossInr = Number(((wastedGrams / 1000.0) * 85.0).toFixed(2)); // Estimated ₹85/kg preparation cost
-
-  // Conscientiousness Credits
-  let greenCreditsEarned = 10;
-  let statusBadge = 'High Leftover Alert';
-  let badgeColor = 'amber';
-
-  if (leftoverPct <= 10) {
-    greenCreditsEarned = 50;
-    statusBadge = 'Zero-Waste Achiever (+50 pts)';
-    badgeColor = 'green';
-  } else if (leftoverPct <= 25) {
-    greenCreditsEarned = 25;
-    statusBadge = 'Moderate Leftovers (+25 pts)';
-    badgeColor = 'sky';
-  } else {
-    greenCreditsEarned = 10;
-    statusBadge = 'High Leftover Alert (+10 pts)';
-    badgeColor = 'amber';
-  }
-
-  // Attribute credits to the relevant department (Hostel Council or user dept)
-  const targetDept = departmentLeaderboard.find((d) =>
-    d.department.toLowerCase().includes(department.toLowerCase()) ||
-    d.code.toLowerCase() === department.toLowerCase()
-  ) || departmentLeaderboard.find((d) => d.code === 'HOSTEL') || departmentLeaderboard[0];
+  // Case B: Calibrated Preset Simulation Mode
+  const servingGrams = typeof originalServingWeightGrams === 'number' && originalServingWeightGrams > 0 ? originalServingWeightGrams : 380;
+  const presetAudit = getCalibratedPresetAudit(simulatedPlateType, servingGrams);
 
   if (targetDept) {
-    targetDept.greenCredits += greenCreditsEarned;
+    targetDept.greenCredits += presetAudit.greenCreditsEarned;
     targetDept.auditsCompleted = (targetDept.auditsCompleted || 0) + 1;
     departmentLeaderboard.sort((a, b) => b.greenCredits - a.greenCredits);
     departmentLeaderboard.forEach((d, idx) => (d.rank = idx + 1));
+
+    simulator.addAuditLog({
+      id: `audit-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      blockId: 'central-hostel-mess',
+      blockName: 'Central Hostel Dining Hall',
+      action: `Preset Audit Simulation: ${simulatedPlateType} (~${presetAudit.remainingPortionPercent}% leftover benchmark).`,
+      resolvedBy: 'Plate Waste Audit User',
+      department: targetDept.department.split(' (')[0],
+      costSavedInr: 0,
+      creditsAwarded: presetAudit.greenCreditsEarned,
+      isSeeded: false,
+      type: 'FOOD_AUDIT',
+    });
   }
 
-  // Record audit log for verifiable activity ledger
-  simulator.addAuditLog({
-    id: `audit-${Date.now()}`,
-    timestamp: new Date().toISOString(),
-    blockId: 'central-hostel-mess',
-    blockName: 'Central Hostel Dining Hall',
-    action: `Plate audit logged: ${wastedGrams}g leftover (${leftoverPct}% of ${standardMealWeightGrams}g meal).`,
-    resolvedBy: 'Plate Waste Audit User',
-    department: targetDept.department.split(' (')[0],
-    costSavedInr: financialLossInr,
-    creditsAwarded: greenCreditsEarned,
-    isSeeded: false,
-    type: 'FOOD_AUDIT',
-  });
-
-  res.json({
+  res.status(200).json({
     status: 'success',
     timestamp: new Date().toISOString(),
     audit: {
-      leftoverPercentage: leftoverPct,
-      estimatedFoodWastedGrams: wastedGrams,
-      estimatedFoodConsumedGrams: consumedGrams,
-      standardMealWeightGrams,
-      co2eEmittedKg,
-      virtualWaterWastedLiters,
-      financialLossInr,
-      greenCreditsEarned,
-      statusBadge,
-      badgeColor,
-      foodRemnantClass: foodCategory,
+      isFoodImage: presetAudit.isFoodImage,
+      visibleFoodItems: presetAudit.visibleFoodItems,
+      remainingPortionPercent: presetAudit.remainingPortionPercent,
+      estimatedLeftoverWeightGrams: presetAudit.estimatedLeftoverWeightGrams,
+      servingWeightAssumption: presetAudit.servingWeightAssumption,
+      visualObservations: presetAudit.visualObservations,
+      uncertainty: presetAudit.uncertainty,
+      limitations: presetAudit.limitations,
+      greenCreditsEarned: presetAudit.greenCreditsEarned,
+      isDuplicate: false,
+      source: presetAudit.source,
+      department: targetDept.department.split(' (')[0],
+      standardMealWeightGrams: servingGrams,
+      estimatedFoodWastedGrams: presetAudit.estimatedLeftoverWeightGrams || 0,
+      leftoverPercentage: presetAudit.remainingPortionPercent,
+      foodRemnantClass: presetAudit.visibleFoodItems.join(', '),
     },
     recommendation:
-      leftoverPct <= 10
+      presetAudit.remainingPortionPercent <= 10
         ? 'Excellent plate clearance. Remnants are well within baseline tolerance.'
-        : leftoverPct <= 25
-        ? 'Noticeable leftovers. Request a smaller rice or roti serving if not finishing portions.'
-        : 'Substantial leftovers (>150g). Consider requesting half-portions at the counter to minimize waste.',
+        : presetAudit.remainingPortionPercent <= 25
+        ? 'Noticeable leftovers. Request smaller servings if not finishing portions.'
+        : 'Substantial leftovers. Consider requesting half-portions at the counter to minimize waste.',
   });
 });
 
