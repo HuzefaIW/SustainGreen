@@ -489,12 +489,15 @@ export const SproutingSeedling: React.FC<BotanicalProps> = ({ className = '', op
 // 8. Refined Paper & Botanical Texture Background Overlay
 export const BotanicalJournalTexture: React.FC = () => (
   <div 
-    className="pointer-events-none fixed inset-0 z-0 opacity-[0.045] mix-blend-multiply"
+    className="pointer-events-none fixed inset-0 z-0 opacity-[0.035] mix-blend-multiply"
     style={{
-      backgroundImage: `radial-gradient(#1B3826 0.9px, transparent 0.9px), radial-gradient(#486840 0.9px, #FAF6EE 0.9px)`,
+      backgroundImage: `radial-gradient(#166534 0.9px, transparent 0.9px), radial-gradient(#22C55E 0.9px, #F5FBF5 0.9px)`,
       backgroundSize: '24px 24px',
       backgroundPosition: '0 0, 12px 12px',
     }}
     aria-hidden="true"
   />
 );
+
+export { BotanicalBackground } from './BotanicalBackground';
+

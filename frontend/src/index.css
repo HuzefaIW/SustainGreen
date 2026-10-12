@@ -2,6 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --eco-bg: #F5FBF5;
+  --eco-surface: #FFFFFF;
+  --eco-pale: #E8F5E9;
+  --eco-primary: #166534;
+  --eco-vibrant: #22C55E;
+  --eco-lime: #A3E635;
+  --eco-heading: #14532D;
+  --eco-border: #DCEBDD;
+  --eco-text: #1F2937;
+  --eco-muted: #64748B;
+}
+
 @layer base {
   html {
     font-size: 17px;
@@ -9,8 +22,8 @@
 
   html, body {
     font-family: 'DM Sans', 'Geist', system-ui, -apple-system, sans-serif;
-    background-color: #faf6ee;
-    color: #191c1a;
+    background-color: #F5FBF5;
+    color: #1F2937;
     -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
     width: 100%;
@@ -18,26 +31,32 @@
 
   h1, h2, h3, h4, .font-serif, .serif-title {
     font-family: 'Instrument Serif', Georgia, serif;
+    color: #14532D;
   }
 
   code, pre, .font-mono {
     font-family: 'Geist Mono', 'JetBrains Mono', monospace !important;
   }
+
+  ::selection {
+    background-color: #166534;
+    color: #FFFFFF;
+  }
 }
 
-/* Vercel subtle dot grid background pattern */
+/* Botanical subtle dot pattern */
 .bg-grid-pattern {
-  background-image: radial-gradient(rgba(0, 0, 0, 0.08) 1px, transparent 1px);
+  background-image: radial-gradient(rgba(22, 101, 52, 0.08) 1px, transparent 1px);
   background-size: 24px 24px;
 }
 
-/* Hairline border utilities */
+/* Hairline border utilities with new vibrant palette */
 .border-hairline {
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 1px solid #DCEBDD;
 }
 
 .border-hairline-subtle {
-  border: 1px solid rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(220, 235, 221, 0.6);
 }
 
 /* Custom minimal scrollbar */
@@ -51,20 +70,134 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #DCEBDD;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #A3E635;
 }
 
-@keyframes pulseSubtle {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.85; transform: scale(1.02); }
+/* ── Botanical Keyframe Animations ────────────────────────────────────────── */
+@keyframes leafDrift1 {
+  0% {
+    transform: translateY(-20px) translateX(0px) rotate(0deg);
+  }
+  25% {
+    transform: translateY(22vh) translateX(18px) rotate(14deg);
+  }
+  50% {
+    transform: translateY(48vh) translateX(-12px) rotate(28deg);
+  }
+  75% {
+    transform: translateY(74vh) translateX(24px) rotate(42deg);
+  }
+  100% {
+    transform: translateY(105vh) translateX(6px) rotate(60deg);
+  }
 }
 
-.animate-pulse-subtle {
-  animation: pulseSubtle 3s ease-in-out infinite;
+@keyframes leafDrift2 {
+  0% {
+    transform: translateY(-30px) translateX(0px) rotate(20deg);
+  }
+  30% {
+    transform: translateY(28vh) translateX(-24px) rotate(6deg);
+  }
+  60% {
+    transform: translateY(58vh) translateX(16px) rotate(-14deg);
+  }
+  85% {
+    transform: translateY(85vh) translateX(-10px) rotate(-4deg);
+  }
+  100% {
+    transform: translateY(110vh) translateX(12px) rotate(18deg);
+  }
 }
+
+@keyframes leafFloatSlow {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-16px) rotate(6deg);
+  }
+}
+
+@keyframes organicGlowPulse {
+  0%, 100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes sporeDrift {
+  0% {
+    transform: translateY(100vh) translateX(0px);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.6;
+  }
+  80% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: translateY(-10vh) translateX(25px);
+    opacity: 0;
+  }
+}
+
+@keyframes heroEntrance {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-leaf-drift-1 {
+  animation: leafDrift1 22s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-leaf-drift-2 {
+  animation: leafDrift2 26s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-leaf-float {
+  animation: leafFloatSlow 8s ease-in-out infinite;
+}
+
+.animate-organic-glow {
+  animation: organicGlowPulse 10s ease-in-out infinite;
+}
+
+.animate-spore {
+  animation: sporeDrift 18s linear infinite;
+}
+
+.animate-hero-entrance {
+  animation: heroEntrance 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .animate-leaf-drift-1,
+  .animate-leaf-drift-2,
+  .animate-leaf-float,
+  .animate-organic-glow,
+  .animate-spore,
+  .animate-hero-entrance {
+    animation: none !important;
+    transform: none !important;
+  }
+}
+
 .text-xs { font-size: 0.875rem !important; }
